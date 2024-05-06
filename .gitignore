@@ -1,0 +1,5 @@
+bin/*
+obj/*
+test
+.cache
+compile_commands.json
