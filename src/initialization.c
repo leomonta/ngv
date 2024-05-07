@@ -1,5 +1,6 @@
 #include "initialization.h"
 #include "vulkan_intialization.h"
+#include <stdio.h>
 
 GLFWwindow *init_window() {
 	glfwInit();
@@ -27,12 +28,18 @@ void terminate_window(GLFWwindow *wndw) {
 	glfwTerminate();
 }
 
-void init_vulkan() {
+void init_vulkan(VulkanRuntimeInfo *vri) {
 
-	VulkanRuntimeInfo vri = {0};
+	if(check_validation_layer_support() == false) {
+		printf("validation layers unsupported");
+	}
 
 	// TODO: logging
-	if(!create_instance(&vri.instance)) {
+	if(!create_instance(&vri->instance)) {
 		return;
 	}
+}
+
+void terminate_vulkan(VulkanRuntimeInfo *vri) {
+	destroy_instance(&vri->instance);
 }

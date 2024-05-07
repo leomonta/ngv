@@ -1,7 +1,13 @@
 #include "vulkan_intialization.h"
 
 #include <GLFW/glfw3.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <vulkan/vulkan_core.h>
+
+const char    *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
+const unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(char *);
 
 const char *VkResult_str(VkResult res) {
 
@@ -45,94 +51,91 @@ const char *VkResult_str(VkResult res) {
 		return "VK_ERROR_FRAGMENTED_POOL";
 	case VK_ERROR_UNKNOWN:
 		return "VK_ERROR_UNKNOWN";
-	// Provided by VK_VERSION_1_1
 	case VK_ERROR_OUT_OF_POOL_MEMORY:
 		return "VK_ERROR_OUT_OF_POOL_MEMORY";
-	// Provided by VK_VERSION_1_1
 	case VK_ERROR_INVALID_EXTERNAL_HANDLE:
 		return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-	// Provided by VK_VERSION_1_2
 	case VK_ERROR_FRAGMENTATION:
 		return "VK_ERROR_FRAGMENTATION";
-	// Provided by VK_VERSION_1_2
 	case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
 		return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
-	// Provided by VK_VERSION_1_3
 	case VK_PIPELINE_COMPILE_REQUIRED:
 		return "VK_PIPELINE_COMPILE_REQUIRED";
-	// Provided by VK_KHR_surface
 	case VK_ERROR_SURFACE_LOST_KHR:
 		return "VK_ERROR_SURFACE_LOST_KHR";
-	// Provided by VK_KHR_surface
 	case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
 		return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-	// Provided by VK_KHR_swapchain
 	case VK_SUBOPTIMAL_KHR:
 		return "VK_SUBOPTIMAL_KHR";
-	// Provided by VK_KHR_swapchain
 	case VK_ERROR_OUT_OF_DATE_KHR:
 		return "VK_ERROR_OUT_OF_DATE_KHR";
-	// Provided by VK_KHR_display_swapchain
 	case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
 		return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-	// Provided by VK_EXT_debug_report
 	case VK_ERROR_VALIDATION_FAILED_EXT:
 		return "VK_ERROR_VALIDATION_FAILED_EXT";
-	// Provided by VK_NV_glsl_shader
 	case VK_ERROR_INVALID_SHADER_NV:
 		return "VK_ERROR_INVALID_SHADER_NV";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
-	// Provided by VK_KHR_video_queue
 	case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:
 		return "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
-	// Provided by VK_EXT_image_drm_format_modifier
 	case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
 		return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-	// Provided by VK_KHR_global_priority
 	case VK_ERROR_NOT_PERMITTED_KHR:
 		return "VK_ERROR_NOT_PERMITTED_KHR";
-	// Provided by VK_EXT_full_screen_exclusive
 	case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
 		return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-	// Provided by VK_KHR_deferred_host_operations
 	case VK_THREAD_IDLE_KHR:
 		return "VK_THREAD_IDLE_KHR";
-	// Provided by VK_KHR_deferred_host_operations
 	case VK_THREAD_DONE_KHR:
 		return "VK_THREAD_DONE_KHR";
-	// Provided by VK_KHR_deferred_host_operations
 	case VK_OPERATION_DEFERRED_KHR:
 		return "VK_OPERATION_DEFERRED_KHR";
-	// Provided by VK_KHR_deferred_host_operations
 	case VK_OPERATION_NOT_DEFERRED_KHR:
 		return "VK_OPERATION_NOT_DEFERRED_KHR";
-	// Provided by VK_KHR_video_encode_queue
 	case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:
 		return "VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR";
-	// Provided by VK_EXT_image_compression_control
 	case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
 		return "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
-	// Provided by VK_EXT_shader_object
 	case VK_INCOMPATIBLE_SHADER_BINARY_EXT:
 		return "VK_INCOMPATIBLE_SHADER_BINARY_EXT";
-	// Provided by VK_KHR_maintenance1
 	default:
 		return "Unkown Error";
 	};
+}
+
+bool check_validation_layer_support() {
+	uint32_t extension_count        = 0;
+	vkEnumerateInstanceLayerProperties(&extension_count, nullptr);
+
+	VkLayerProperties *layer_props = (VkLayerProperties *)(malloc(sizeof(VkLayerProperties) * extension_count));
+
+	vkEnumerateInstanceLayerProperties(&extension_count, layer_props);
+
+	for (unsigned i = 0; i < VALIDATION_LAYERS_COUNT; ++i) {
+		bool layerFound = false;
+
+		for (unsigned j = 0; j < extension_count; ++j) {
+			if (strcmp(VALIDATION_LAYERS[i], layer_props[j].layerName) == 0) {
+				layerFound = true;
+				break;
+			}
+		}
+
+		if (!layerFound) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool create_instance(VkInstance *instance) {
@@ -149,6 +152,19 @@ bool create_instance(VkInstance *instance) {
 	createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo     = &appInfo;
 
+	uint32_t extension_count        = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
+
+	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
+
+	printf("Available extensions:\n");
+
+	for (unsigned i = 0; i < extension_count; ++i) {
+		printf("\t%s\n", ext_props[i].extensionName);
+	}
+
 	uint32_t     glfwExtensionCount = 0;
 	const char **glfwExtensions;
 
@@ -157,13 +173,19 @@ bool create_instance(VkInstance *instance) {
 	createInfo.enabledExtensionCount   = glfwExtensionCount;
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-	createInfo.enabledLayerCount = 0;
+	createInfo.enabledLayerCount = VALIDATION_LAYERS_COUNT;
+	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
 
-	VkResult result = vkCreateInstance(&createInfo, nullptr, instance);
+	auto result = vkCreateInstance(&createInfo, nullptr, instance);
 
 	if (result != VK_SUCCESS) {
 		return false;
 	}
+	return true;
+}
+
+bool destroy_instance(VkInstance *instance) {
+	vkDestroyInstance(*instance, nullptr);
 
 	return true;
 }

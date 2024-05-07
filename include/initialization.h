@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vulkan_intialization.h"
+
 #include <GLFW/glfw3.h>
 
 #define DEFAULT_WINDOW_HEIGHT 1080
@@ -19,4 +21,5 @@ GLFWwindow *init_window();
  */
 void terminate_window(GLFWwindow *wndw);
 
-void init_vulkan();
+void init_vulkan(VulkanRuntimeInfo *vri);
+void terminate_vulkan(VulkanRuntimeInfo *vri);
