@@ -21,5 +21,16 @@ GLFWwindow *init_window();
  */
 void terminate_window(GLFWwindow *wndw);
 
+/**
+ * Initializes all the vulkan component and popolates the VulkanRuntimeInfo given 
+ *
+ * @param[out]  the vulkan information that is gonna be initialized
+ */
 void init_vulkan(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroy everything created by init_vulkan on reverse order
+ *
+ * @param[in] the destroy
+ */
 void terminate_vulkan(VulkanRuntimeInfo *vri);

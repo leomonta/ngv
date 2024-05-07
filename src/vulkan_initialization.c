@@ -1,3 +1,4 @@
+#include "logger.h"
 #include "vulkan_intialization.h"
 
 #include <GLFW/glfw3.h>
@@ -113,29 +114,24 @@ const char *VkResult_str(VkResult res) {
 }
 
 bool check_validation_layer_support() {
-	uint32_t extension_count        = 0;
+	uint32_t extension_count = 0;
 	vkEnumerateInstanceLayerProperties(&extension_count, nullptr);
 
-	VkLayerProperties *layer_props = (VkLayerProperties *)(malloc(sizeof(VkLayerProperties) * extension_count));
+	VkLayerProperties *props = (VkLayerProperties *)(malloc(sizeof(VkLayerProperties) * extension_count));
 
-	vkEnumerateInstanceLayerProperties(&extension_count, layer_props);
+	vkEnumerateInstanceLayerProperties(&extension_count, props);
 
 	for (unsigned i = 0; i < VALIDATION_LAYERS_COUNT; ++i) {
-		bool layerFound = false;
 
 		for (unsigned j = 0; j < extension_count; ++j) {
-			if (strcmp(VALIDATION_LAYERS[i], layer_props[j].layerName) == 0) {
-				layerFound = true;
-				break;
+			if (strcmp(VALIDATION_LAYERS[i], props[j].layerName) == 0) {
+				llog(LOG_INFO, "Validation layer found\n");
+				return true;
 			}
-		}
-
-		if (!layerFound) {
-			return false;
 		}
 	}
 
-	return true;
+	return false;
 }
 
 bool create_instance(VkInstance *instance) {
@@ -152,14 +148,14 @@ bool create_instance(VkInstance *instance) {
 	createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo     = &appInfo;
 
-	uint32_t extension_count        = 0;
+	uint32_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
 	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
 
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
 
-	printf("Available extensions:\n");
+	llog(LOG_DEBUG, "Available extensions:\n");
 
 	for (unsigned i = 0; i < extension_count; ++i) {
 		printf("\t%s\n", ext_props[i].extensionName);
@@ -173,7 +169,7 @@ bool create_instance(VkInstance *instance) {
 	createInfo.enabledExtensionCount   = glfwExtensionCount;
 	createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-	createInfo.enabledLayerCount = VALIDATION_LAYERS_COUNT;
+	createInfo.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
 	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
 
 	auto result = vkCreateInstance(&createInfo, nullptr, instance);

@@ -6,6 +6,13 @@ typedef struct {
 	VkInstance instance;
 } VulkanRuntimeInfo;
 
+/**
+ * given a VkResult returns its 'define' name 
+ *
+ * @param[in] res the vkResult to 'stringify'
+ * 
+ * @return the string containing the name of the VkResult compile time name
+ */
 const char *VkError_str(VkResult res);
 
 bool check_validation_layer_support();
