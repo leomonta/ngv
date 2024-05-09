@@ -1,5 +1,6 @@
 #include "initialization.h"
 
+#include "config.h"
 #include "logger.h"
 #include "vulkan_intialization.h"
 
@@ -33,9 +34,11 @@ void terminate_window(GLFWwindow *wndw) {
 
 void init_vulkan(VulkanRuntimeInfo *vri) {
 
+#ifdef USE_VALIDATION_LAYERS
 	if (check_validation_layer_support() == false) {
 		llog(LOG_WARNING, "Validation layers unsupported\n");
 	}
+#endif
 
 	if (!create_instance(&vri->instance)) {
 		llog(LOG_INFO, "Vulkan instance created");

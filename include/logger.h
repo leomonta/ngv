@@ -11,6 +11,24 @@ typedef enum : char {
 	LOG_DEBUG
 } logLevel;
 
+/**
+ * Set the local log_level variable to prevent any log message 'lower' than the one selected from being printed
+ *
+ * @param[in] ll the new log level to use
+ */
 void set_log_level(logLevel ll);
 
+/**
+ * logs a message to the standard output, with info about log level, file, line number, and function name 
+ * the variadic arguments are passed, alongside format, to vprintf
+ * it is suggested to use the `llog` for automatic file name, line number, and function name detection
+ *
+ * @param[in] ll the log level of the message 
+ * @param[in] file_name the file to show at the log message
+ * @param[in] line_num the line number to show in the log message
+ * @param[in] function_name the function name to show in the log message
+ * @param[in] format the orintf format to use when printing the variadic arguments
+ * @param[in] ... the variadic arguments to pass to printf
+ *
+ */
 void logger(logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...);

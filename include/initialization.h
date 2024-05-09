@@ -10,7 +10,7 @@
 /**
  * Initializes glfw and returns a newly created window
  *
- * @returns the create window
+ * @return the create window
  */
 GLFWwindow *init_window();
 

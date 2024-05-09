@@ -21,12 +21,12 @@
 	},
 
 	"debug": {
-		"compiler_args": "-g3 -std=c2x -Wall -Wextra -Wconversion -fsanitize=leak -fsanitize=address",
+		"compiler_args": "-g3 -std=c2x -Wall -DDEBUG -Wextra -Wconversion -fsanitize=leak -fsanitize=address",
 		"linker_args": "rcs"
 	},
 
 	"release": {
-		"compiler_args": "-Ofast -std=c2x",
+		"compiler_args": "-Ofast -DNDBUG -std=c2x",
 		"linker_args": "rcs"
 	}
 }
