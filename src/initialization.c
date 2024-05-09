@@ -37,10 +37,8 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 		llog(LOG_WARNING, "Validation layers unsupported\n");
 	}
 
-	llog(LOG_INFO, "TEST\n");
-
-	// TODO: logging
 	if (!create_instance(&vri->instance)) {
+		llog(LOG_INFO, "Vulkan instance created");
 		return;
 	}
 }

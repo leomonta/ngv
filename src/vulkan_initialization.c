@@ -175,6 +175,7 @@ bool create_instance(VkInstance *instance) {
 	auto result = vkCreateInstance(&createInfo, nullptr, instance);
 
 	if (result != VK_SUCCESS) {
+		llog(LOG_ERROR, "Could not create vulkan instance: %s\n", VkResult_str(result));
 		return false;
 	}
 	return true;

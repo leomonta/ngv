@@ -13,7 +13,7 @@ typedef struct {
  * 
  * @return the string containing the name of the VkResult compile time name
  */
-const char *VkError_str(VkResult res);
+const char *VkResult_str(VkResult res);
 
 bool check_validation_layer_support();
 
