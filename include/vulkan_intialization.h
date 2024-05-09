@@ -39,3 +39,9 @@ bool create_instance(VkInstance *instance);
  * @return if the operation was successfull or not
  */
 bool destroy_instance(VkInstance *instance);
+
+/**
+ * Creates a vulkan callback to attach to the validation layer
+ * It uses the logger function
+ */
+void attach_logger_callback(VkInstance *instance);

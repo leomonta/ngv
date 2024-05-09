@@ -15,7 +15,7 @@ GLFWwindow *init_window() {
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	// get the monitor size
-	// if unavilable standard 1920x1080
+	// if unavailable standard 1920x1080
 	auto const mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	int        wt = DEFAULT_WINDOW_WIDTH, ht = DEFAULT_WINDOW_HEIGHT;
 	if (mode != NULL) {
@@ -37,6 +37,7 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 #ifdef USE_VALIDATION_LAYERS
 	if (check_validation_layer_support() == false) {
 		llog(LOG_WARNING, "Validation layers unsupported\n");
+		attach_logger_callback();
 	}
 #endif
 

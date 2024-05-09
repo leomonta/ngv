@@ -1,11 +1,15 @@
+#include "config.h"
 #include "logger.h"
 #include "vulkan_intialization.h"
 
 #include <GLFW/glfw3.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vulkan/vulkan_core.h>
+
+#ifdef RAW_PRINTS
+#	include <stdio.h>
+#endif
 
 const char    *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
 const unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(char *);
@@ -134,7 +138,33 @@ bool check_validation_layer_support() {
 	return false;
 }
 
+/**
+ * Queries glfw about the required extensions for Vulkan and returns a <strong>mallocated array that needs to be manually freed</strong>
+ */
+const char **get_required_extensions(uint32_t *count) {
+	// get vulkan extensions from glfw
+	const char **glfw_exts;
+
+	glfw_exts = glfwGetRequiredInstanceExtensions(count);
+
+#ifdef USE_VALIDATION_LAYERS
+	++(*count);
+#endif
+
+	auto exts = (const char **)malloc(*count * sizeof(const char *));
+	memcpy(exts, glfw_exts, *count * sizeof(const char *));
+
+#ifdef USE_VALIDATION_LAYERS
+	exts[*count - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+#endif
+
+	return exts;
+}
+
 bool create_instance(VkInstance *instance) {
+
+	// Application information, fairly trivial / uninmportant
+
 	VkApplicationInfo appInfo = {0};
 
 	appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -144,33 +174,34 @@ bool create_instance(VkInstance *instance) {
 	appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.apiVersion         = VK_API_VERSION_1_3;
 
+	// what we need to create with vkCreateInstance
 	VkInstanceCreateInfo createInfo = {0};
 	createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo     = &appInfo;
 
+	// how many instance we can use
 	uint32_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
 	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
-
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
 
+#ifdef RAW_PRINTS
 	llog(LOG_DEBUG, "Available extensions:\n");
 
 	for (unsigned i = 0; i < extension_count; ++i) {
 		printf("\t%s\n", ext_props[i].extensionName);
 	}
+#endif
 
-	uint32_t     glfwExtensionCount = 0;
-	const char **glfwExtensions;
-
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-	createInfo.enabledExtensionCount   = glfwExtensionCount;
-	createInfo.ppEnabledExtensionNames = glfwExtensions;
-
+#ifdef USE_VALIDATION_LAYERS
 	createInfo.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
 	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
+#else
+	createInfo.enabledLayerCount = 0;
+#endif
+
+	createInfo.ppEnabledExtensionNames = get_required_extensions(&createInfo.enabledExtensionCount);
 
 	auto result = vkCreateInstance(&createInfo, nullptr, instance);
 
@@ -185,4 +216,26 @@ bool destroy_instance(VkInstance *instance) {
 	vkDestroyInstance(*instance, nullptr);
 
 	return true;
+}
+
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void attach_logger_callback(VkInstance *instance) {
+	VkDebugUtilsMessengerCreateInfoEXT info = {0};
+	info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	info.pfnUserCallback                    = logger_callback;
+	info.pUserData                          = nullptr; // Optional
+	
+	CreateDebugUtilsMessengerEXT(instance, info, nullptr, )
+
+
 }

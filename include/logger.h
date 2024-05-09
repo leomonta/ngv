@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vulkan/vulkan.h"
+
 // quick macro to use the automatic __FILE__ and __LINE__ gcc defines
 #define llog(level, format, ...) logger(level, __FILE_NAME__, __LINE__, __PRETTY_FUNCTION__, format __VA_OPT__(, ) __VA_ARGS__)
 
@@ -19,11 +21,11 @@ typedef enum : char {
 void set_log_level(logLevel ll);
 
 /**
- * logs a message to the standard output, with info about log level, file, line number, and function name 
+ * logs a message to the standard output, with info about log level, file, line number, and function name
  * the variadic arguments are passed, alongside format, to vprintf
  * it is suggested to use the `llog` for automatic file name, line number, and function name detection
  *
- * @param[in] ll the log level of the message 
+ * @param[in] ll the log level of the message
  * @param[in] file_name the file to show at the log message
  * @param[in] line_num the line number to show in the log message
  * @param[in] function_name the function name to show in the log message
@@ -32,3 +34,8 @@ void set_log_level(logLevel ll);
  *
  */
 void logger(logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...);
+
+/**
+ * Vulkan callback that internnally calls logger
+ */
+VKAPI_ATTR VkBool32 VKAPI_CALL logger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData);
