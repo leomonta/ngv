@@ -130,10 +130,13 @@ bool check_validation_layer_support() {
 		for (unsigned j = 0; j < extension_count; ++j) {
 			if (strcmp(VALIDATION_LAYERS[i], props[j].layerName) == 0) {
 				llog(LOG_INFO, "Validation layer found\n");
+				free(props);
 				return true;
 			}
 		}
 	}
+
+	free(props);
 
 	return false;
 }
@@ -151,7 +154,7 @@ const char **get_required_extensions(uint32_t *count) {
 	++(*count);
 #endif
 
-	auto exts = (const char **)malloc(*count * sizeof(const char *));
+	auto exts = (const char **)malloc(*count * sizeof(char *));
 	memcpy(exts, glfw_exts, *count * sizeof(const char *));
 
 #ifdef USE_VALIDATION_LAYERS
@@ -194,16 +197,20 @@ bool create_instance(VkInstance *instance) {
 	}
 #endif
 
-#ifdef USE_VALIDATION_LAYERS
-	createInfo.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
-	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
-#else
-	createInfo.enabledLayerCount = 0;
-#endif
+	free(ext_props);
 
-	createInfo.ppEnabledExtensionNames = get_required_extensions(&createInfo.enabledExtensionCount);
+#ifdef USE_VALIDATION_LAYERS
+	    createInfo.enabledLayerCount = VALIDATION_LAYERS_COUNT;
+	createInfo.ppEnabledLayerNames   = VALIDATION_LAYERS;
+#else
+	    createInfo.enabledLayerCount = 0;
+#endif
+	auto exts                          = get_required_extensions(&createInfo.enabledExtensionCount);
+	createInfo.ppEnabledExtensionNames = exts;
 
 	auto result = vkCreateInstance(&createInfo, nullptr, instance);
+
+	free(exts);
 
 	if (result != VK_SUCCESS) {
 		llog(LOG_ERROR, "Could not create vulkan instance: %s\n", VkResult_str(result));
@@ -218,24 +225,31 @@ bool destroy_instance(VkInstance *instance) {
 	return true;
 }
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
+bool detach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger) {
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func != nullptr) {
+		llog(LOG_ERROR, "Could not destroy the debug callback");
+		return false;
+	}
+	func(*instance, *debug_logger, nullptr);
+	return true;
 }
 
-void attach_logger_callback(VkInstance *instance) {
+bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger) {
 	VkDebugUtilsMessengerCreateInfoEXT info = {0};
 	info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	info.pfnUserCallback                    = logger_callback;
 	info.pUserData                          = nullptr; // Optional
-	
-	CreateDebugUtilsMessengerEXT(instance, info, nullptr, )
 
+	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkCreateDebugUtilsMessengerEXT");
 
+	if (func == nullptr) {
+		llog(LOG_ERROR, "Could not create a debug callback");
+		return false;
+	}
+	func(*instance, &info, nullptr, debug_logger);
+
+	return true;
 }

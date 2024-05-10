@@ -37,7 +37,6 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 #ifdef USE_VALIDATION_LAYERS
 	if (check_validation_layer_support() == false) {
 		llog(LOG_WARNING, "Validation layers unsupported\n");
-		attach_logger_callback();
 	}
 #endif
 
@@ -45,8 +44,14 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 		llog(LOG_INFO, "Vulkan instance created");
 		return;
 	}
+
+#ifdef USE_VALIDATION_LAYERS
+	attach_logger_callback(&vri->instance, &vri->debug_logger);
+#endif
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
+	detach_logger_callback(&vri->instance, &vri->debug_logger);
+
 	destroy_instance(&vri->instance);
 }
