@@ -41,7 +41,7 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 #endif
 
 	if (!create_instance(&vri->instance)) {
-		llog(LOG_INFO, "Vulkan instance created");
+		llog(LOG_INFO, "Vulkan instance created\n");
 		return;
 	}
 

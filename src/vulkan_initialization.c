@@ -200,10 +200,10 @@ bool create_instance(VkInstance *instance) {
 	free(ext_props);
 
 #ifdef USE_VALIDATION_LAYERS
-	    createInfo.enabledLayerCount = VALIDATION_LAYERS_COUNT;
-	createInfo.ppEnabledLayerNames   = VALIDATION_LAYERS;
+	createInfo.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
+	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
 #else
-	    createInfo.enabledLayerCount = 0;
+	createInfo.enabledLayerCount = 0;
 #endif
 	auto exts                          = get_required_extensions(&createInfo.enabledExtensionCount);
 	createInfo.ppEnabledExtensionNames = exts;
@@ -227,11 +227,13 @@ bool destroy_instance(VkInstance *instance) {
 
 bool detach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger) {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		llog(LOG_ERROR, "Could not destroy the debug callback");
+	if (func == nullptr) {
+		llog(LOG_ERROR, "Could not get the debug destruction function\n");
 		return false;
 	}
+
 	func(*instance, *debug_logger, nullptr);
+
 	return true;
 }
 
@@ -246,10 +248,15 @@ bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debu
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkCreateDebugUtilsMessengerEXT");
 
 	if (func == nullptr) {
-		llog(LOG_ERROR, "Could not create a debug callback");
+		llog(LOG_ERROR, "Could not get the debug callback creation function\n");
 		return false;
 	}
-	func(*instance, &info, nullptr, debug_logger);
+	auto res = func(*instance, &info, nullptr, debug_logger);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "The debug callback creation function returned %s, could not create the debug callback\n", VkResult_str(res));
+		return false;
+	}
 
 	return true;
 }

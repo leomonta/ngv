@@ -88,22 +88,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL logger_callback(VkDebugUtilsMessageSeverityFlagBi
 		break;
 	}
 
-
-	const char* context;
+	const char *context;
 
 	switch (messageType) {
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
-			context = "General";
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
-			context = "Validation";
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
-			context = "Performance";
-			break;
-		default: 
-
-	 
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+		context = "General";
+		break;
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+		context = "Validation";
+		break;
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+		context = "Performance";
+		break;
+	default:
 	}
 
 	logger(ll, "Vulkan", 0, context, pCallbackData->pMessage);
