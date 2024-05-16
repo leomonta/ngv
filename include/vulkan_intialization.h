@@ -5,6 +5,7 @@
 typedef struct {
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
+	VkPhysicalDevice         physical_dev;
 } VulkanRuntimeInfo;
 
 /**
@@ -30,7 +31,7 @@ bool check_validation_layer_support();
  *
  * @return if the operation was successfull or not
  */
-bool create_instance(VkInstance *instance);
+bool create_instance(VulkanRuntimeInfo *vri);
 
 /**
  * Destroy a VkInstance and its associated data
@@ -39,7 +40,7 @@ bool create_instance(VkInstance *instance);
  *
  * @return if the operation was successfull or not
  */
-bool destroy_instance(VkInstance *instance);
+bool destroy_instance(VulkanRuntimeInfo *vri);
 
 /**
  * Creates a vulkan callback to attach to the validation layer
@@ -50,7 +51,7 @@ bool destroy_instance(VkInstance *instance);
  *
  * @return true if successfull, false otherwise
  */
-bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger);
+bool attach_logger_callback(VulkanRuntimeInfo *vri);
 
 /**
  * destroy the vulkna callback attached to the logger function
@@ -60,4 +61,9 @@ bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debu
  *
  * @return true if successfull, false otherwise
  */
-bool detach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger);
+bool detach_logger_callback(VulkanRuntimeInfo *vri);
+
+/**
+ *
+ */
+void pick_physical_device(VulkanRuntimeInfo *vri);

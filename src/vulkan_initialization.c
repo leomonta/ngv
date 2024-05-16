@@ -164,7 +164,7 @@ const char **get_required_extensions(uint32_t *count) {
 	return exts;
 }
 
-bool create_instance(VkInstance *instance) {
+bool create_instance(VulkanRuntimeInfo *vri) {
 
 	// Application information, fairly trivial / uninmportant
 
@@ -172,9 +172,9 @@ bool create_instance(VkInstance *instance) {
 
 	appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName   = "Neon Genesis Vulkan";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 	appInfo.pEngineName        = "None";
-	appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.engineVersion      = VK_MAKE_VERSION(0, 0, 0);
 	appInfo.apiVersion         = VK_API_VERSION_1_3;
 
 	// what we need to create with vkCreateInstance
@@ -208,7 +208,7 @@ bool create_instance(VkInstance *instance) {
 	auto exts                          = get_required_extensions(&createInfo.enabledExtensionCount);
 	createInfo.ppEnabledExtensionNames = exts;
 
-	auto result = vkCreateInstance(&createInfo, nullptr, instance);
+	auto result = vkCreateInstance(&createInfo, nullptr, &vri->instance);
 
 	free(exts);
 
@@ -219,25 +219,25 @@ bool create_instance(VkInstance *instance) {
 	return true;
 }
 
-bool destroy_instance(VkInstance *instance) {
-	vkDestroyInstance(*instance, nullptr);
+bool destroy_instance(VulkanRuntimeInfo *vri) {
+	vkDestroyInstance(vri->instance, nullptr);
 
 	return true;
 }
 
-bool detach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkDestroyDebugUtilsMessengerEXT");
+bool detach_logger_callback(VulkanRuntimeInfo *vri) {
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func == nullptr) {
 		llog(LOG_ERROR, "Could not get the debug destruction function\n");
 		return false;
 	}
 
-	func(*instance, *debug_logger, nullptr);
+	func(vri->instance, vri->debug_logger, nullptr);
 
 	return true;
 }
 
-bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debug_logger) {
+bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 	VkDebugUtilsMessengerCreateInfoEXT info = {0};
 	info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -245,13 +245,13 @@ bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debu
 	info.pfnUserCallback                    = logger_callback;
 	info.pUserData                          = nullptr; // Optional
 
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*instance, "vkCreateDebugUtilsMessengerEXT");
+	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkCreateDebugUtilsMessengerEXT");
 
 	if (func == nullptr) {
 		llog(LOG_ERROR, "Could not get the debug callback creation function\n");
 		return false;
 	}
-	auto res = func(*instance, &info, nullptr, debug_logger);
+	auto res = func(vri->instance, &info, nullptr, &vri->debug_logger);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_ERROR, "The debug callback creation function returned %s, could not create the debug callback\n", VkResult_str(res));
@@ -259,4 +259,48 @@ bool attach_logger_callback(VkInstance *instance, VkDebugUtilsMessengerEXT *debu
 	}
 
 	return true;
+}
+
+VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count) {
+
+	/*
+	auto     choice = VK_NULL_HANDLE;
+	unsigned score  = 0;
+	unsigned old_score  = 0;
+
+	for (size_t i = 0; i < count; ++i) {
+		VkPhysicalDeviceProperties dev_props;
+		VkPhysicalDeviceFeatures dev_feats;
+		vkGetPhysicalDeviceProperties(devs[0], &dev_props);
+		vkGetPhysicalDeviceFeatures(devs[0], &dev_feats);
+
+		if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			score += 1000;
+		}
+
+		if (old_score < score) {
+			old_score = score;
+			choice = devs[i];
+		}
+
+	}
+	*/
+
+	return devs[0];
+}
+
+void pick_physical_device(VulkanRuntimeInfo *vri) {
+	uint32_t count = 0;
+	vkEnumeratePhysicalDevices(vri->instance, &count, nullptr);
+
+	if (count <= 0) {
+		llog(LOG_ERROR, "Could not enumerate physical devices\n");
+	}
+
+	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
+	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
+
+	pick_best_device(devs, count);
+
+	free(devs);
 }

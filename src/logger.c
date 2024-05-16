@@ -104,6 +104,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL logger_callback(VkDebugUtilsMessageSeverityFlagBi
 	}
 
 	logger(ll, "Vulkan", 0, context, pCallbackData->pMessage);
+	printf("\n"); //FIXME: This is not the best this ever, oH well
 
 	return VK_FALSE;
 }

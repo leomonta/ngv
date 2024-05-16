@@ -40,18 +40,20 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 	}
 #endif
 
-	if (!create_instance(&vri->instance)) {
+	if (!create_instance(vri)) {
 		llog(LOG_INFO, "Vulkan instance created\n");
 		return;
 	}
 
 #ifdef USE_VALIDATION_LAYERS
-	attach_logger_callback(&vri->instance, &vri->debug_logger);
+	attach_logger_callback(vri);
 #endif
+
+	pick_physical_device(vri);
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
-	detach_logger_callback(&vri->instance, &vri->debug_logger);
+	detach_logger_callback(vri);
 
-	destroy_instance(&vri->instance);
+	destroy_instance(vri);
 }
