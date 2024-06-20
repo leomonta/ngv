@@ -1,11 +1,22 @@
 #pragma once
 
+#include "utils.h"
+
 #include <vulkan/vulkan_core.h>
+
+typedef struct {
+	uint32_t graphics;
+
+	bitfield available_families;
+} QueueFamilyIndicies;
+
+#define USED_QUEUE_FAMILIES sizeof(QueueFamilyIndicies) % sizeof(uint32_t) - 1;
 
 typedef struct {
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
 	VkPhysicalDevice         physical_dev;
+	QueueFamilyIndicies      families;
 } VulkanRuntimeInfo;
 
 /**
@@ -27,7 +38,7 @@ bool check_validation_layer_support();
 /**
  * Creates a VkInstance
  *
- * @param[out] the pointer where to create the instance
+ * @param[out] the vulkan context where to put the created instance
  *
  * @return if the operation was successfull or not
  */
@@ -36,7 +47,7 @@ bool create_instance(VulkanRuntimeInfo *vri);
 /**
  * Destroy a VkInstance and its associated data
  *
- * @param[in] the instance to destroy
+ * @param[in] the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
@@ -46,8 +57,7 @@ bool destroy_instance(VulkanRuntimeInfo *vri);
  * Creates a vulkan callback to attach to the validation layer
  * It uses the logger function
  *
- * @param[in] instance to which instance this debugger is boud to
- * @param[in] debug_logger the logger to destroy
+ * @param[in] the vulkan context to use
  *
  * @return true if successfull, false otherwise
  */
@@ -56,14 +66,17 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri);
 /**
  * destroy the vulkna callback attached to the logger function
  *
- * @param[in] instance to which instance this debugger is boud to
- * @param[in] debug_logger the logger to destroy
+ * @param[in] the vulkan context to use
  *
  * @return true if successfull, false otherwise
  */
 bool detach_logger_callback(VulkanRuntimeInfo *vri);
 
 /**
+ * List the available physical devices to use
  *
+ * @param[in] the vulkan context to use
+ *
+ * @return true if successfull, false if no suitable device (or at all) was found
  */
-void pick_physical_device(VulkanRuntimeInfo *vri);
+bool pick_physical_device(VulkanRuntimeInfo *vri);

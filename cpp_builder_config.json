@@ -26,7 +26,7 @@
 	},
 
 	"release": {
-		"compiler_args": "-Ofast -DNDBUG -std=c2x",
+		"compiler_args": "-Ofast -DNDEBUG -std=c2x",
 		"linker_args": "rcs"
 	}
 }

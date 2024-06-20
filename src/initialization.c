@@ -53,7 +53,9 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
+#ifdef USE_VALIDATION_LAYERS
 	detach_logger_callback(vri);
+#endif
 
 	destroy_instance(vri);
 }

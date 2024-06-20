@@ -269,19 +269,19 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 	unsigned old_score  = 0;
 
 	for (size_t i = 0; i < count; ++i) {
-		VkPhysicalDeviceProperties dev_props;
-		VkPhysicalDeviceFeatures dev_feats;
-		vkGetPhysicalDeviceProperties(devs[0], &dev_props);
-		vkGetPhysicalDeviceFeatures(devs[0], &dev_feats);
+	    VkPhysicalDeviceProperties dev_props;
+	    VkPhysicalDeviceFeatures dev_feats;
+	    vkGetPhysicalDeviceProperties(devs[0], &dev_props);
+	    vkGetPhysicalDeviceFeatures(devs[0], &dev_feats);
 
-		if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-			score += 1000;
-		}
+	    if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+	        score += 1000;
+	    }
 
-		if (old_score < score) {
-			old_score = score;
-			choice = devs[i];
-		}
+	    if (old_score < score) {
+	        old_score = score;
+	        choice = devs[i];
+	    }
 
 	}
 	*/
@@ -289,18 +289,48 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 	return devs[0];
 }
 
-void pick_physical_device(VulkanRuntimeInfo *vri) {
+bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(vri->instance, &count, nullptr);
 
 	if (count <= 0) {
 		llog(LOG_ERROR, "Could not enumerate physical devices\n");
+		return false;
 	}
 
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
+
 	pick_best_device(devs, count);
+	// TODO: save the selcted device somewhere else
 
 	free(devs);
+
+	return true;
+}
+
+bool find_queue_families(VulkanRuntimeInfo *vri) {
+
+	uint32_t count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(vri->physical_dev, &count, nullptr);
+
+	if (count <= 0) {
+		llog(LOG_ERROR, "Could not find any queue family\n");
+		return false;
+	}
+
+	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
+	vkGetPhysicalDeviceQueueFamilyProperties(vri->physical_dev, &count, queues);
+
+
+	for (uint32_t i = 0; i < count; ++i) {
+		auto qf = queues[i];
+		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			vri->families.graphics = i;
+		}
+	}
+
+	free(queues);
+	return false;
 }
