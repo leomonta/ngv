@@ -261,32 +261,70 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
+QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev) {
+
+	QueueFamilyIndicies res = {0};
+
+	uint32_t count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physical_dev, &count, nullptr);
+
+	if (count <= 0) {
+		llog(LOG_ERROR, "Could not find any queue family\n");
+		return res;
+	}
+
+	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
+	vkGetPhysicalDeviceQueueFamilyProperties(physical_dev, &count, queues);
+
+	for (uint32_t i = 0; i < count; ++i) {
+		auto qf = queues[i];
+		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			res.graphics = i;
+			set_bit(res.graphics, GRAPHIC_QUEUE_INDEX);
+		} else if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			res.graphics = i;
+			set_bit(res.graphics, COMPUTE_QUEUE_INDEX);
+		} else if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+			res.graphics = i;
+			set_bit(res.graphics, TRANSFER_QUEUE_INDEX);
+		}
+	}
+
+	free(queues);
+	return res;
+}
+
 VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count) {
 
-	/*
-	auto     choice = VK_NULL_HANDLE;
-	unsigned score  = 0;
-	unsigned old_score  = 0;
+	auto     choice    = VK_NULL_HANDLE;
+	unsigned score     = 0;
+	unsigned old_score = 0;
 
 	for (size_t i = 0; i < count; ++i) {
-	    VkPhysicalDeviceProperties dev_props;
-	    VkPhysicalDeviceFeatures dev_feats;
-	    vkGetPhysicalDeviceProperties(devs[0], &dev_props);
-	    vkGetPhysicalDeviceFeatures(devs[0], &dev_feats);
+		score = 0;
+		auto qfam = find_queue_families(devs[i]);
 
-	    if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-	        score += 1000;
-	    }
+		if (at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
+			continue;
+		}
+		VkPhysicalDeviceProperties dev_props;
+		VkPhysicalDeviceFeatures   dev_feats;
+		vkGetPhysicalDeviceProperties(devs[i], &dev_props);
+		vkGetPhysicalDeviceFeatures(devs[i], &dev_feats);
 
-	    if (old_score < score) {
-	        old_score = score;
-	        choice = devs[i];
-	    }
 
+		if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			choice = devs[i];
+			break;
+		}
+
+		if (old_score < score) {
+			old_score = score;
+			choice    = devs[i];
+		}
 	}
-	*/
 
-	return devs[0];
+	return choice;
 }
 
 bool pick_physical_device(VulkanRuntimeInfo *vri) {
@@ -301,36 +339,10 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
-
 	pick_best_device(devs, count);
 	// TODO: save the selcted device somewhere else
 
 	free(devs);
 
 	return true;
-}
-
-bool find_queue_families(VulkanRuntimeInfo *vri) {
-
-	uint32_t count = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(vri->physical_dev, &count, nullptr);
-
-	if (count <= 0) {
-		llog(LOG_ERROR, "Could not find any queue family\n");
-		return false;
-	}
-
-	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
-	vkGetPhysicalDeviceQueueFamilyProperties(vri->physical_dev, &count, queues);
-
-
-	for (uint32_t i = 0; i < count; ++i) {
-		auto qf = queues[i];
-		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			vri->families.graphics = i;
-		}
-	}
-
-	free(queues);
-	return false;
 }

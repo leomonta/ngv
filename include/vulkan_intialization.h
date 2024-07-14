@@ -6,9 +6,19 @@
 
 typedef struct {
 	uint32_t graphics;
+	uint32_t compute;
+	uint32_t transfer;
+	uint32_t sparse_binding;
 
 	bitfield available_families;
 } QueueFamilyIndicies;
+
+enum : char {
+	GRAPHIC_QUEUE_INDEX,
+	COMPUTE_QUEUE_INDEX,
+	TRANSFER_QUEUE_INDEX,
+	SPARSE_BINDING_QUEUE_INDEX
+};
 
 #define USED_QUEUE_FAMILIES sizeof(QueueFamilyIndicies) % sizeof(uint32_t) - 1;
 
