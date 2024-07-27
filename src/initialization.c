@@ -2,7 +2,6 @@
 
 #include "config.h"
 #include "logger.h"
-#include "vulkan_intialization.h"
 
 #include <stdio.h>
 
@@ -57,5 +56,7 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	detach_logger_callback(vri);
 #endif
 
+	destroy_logical_device(vri);
 	destroy_instance(vri);
 }
+

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_intialization.h"
+#include "vulkan_initialization.h"
 
 #include <GLFW/glfw3.h>
 #define DEFAULT_WINDOW_HEIGHT 1080

@@ -15,7 +15,7 @@ typedef uint64_t longBitfield;
  * @param[in]
  * @param[in]
  *
- * @return the value of the but at the index `i` of `false` if out of bounds
+ * @return the value of the bit at the index `i` of `false` if out of bounds
  */
 bool at_bit(const bitfield bf, const unsigned char i);
 
@@ -25,7 +25,7 @@ bool at_bit(const bitfield bf, const unsigned char i);
  * @param[in]
  * @param[in]
  *
- * @return the value of the but at the index `i` of `false` if out of bounds
+ * @return the value of the bit at the index `i` of `false` if out of bounds
  */
 bool at_bit_long(const longBitfield lbf, const unsigned char i);
 

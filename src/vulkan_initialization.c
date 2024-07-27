@@ -1,6 +1,7 @@
 #include "config.h"
 #include "logger.h"
-#include "vulkan_intialization.h"
+#include "utils.h"
+#include "vulkan_initialization.h"
 
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
@@ -301,7 +302,7 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 	unsigned old_score = 0;
 
 	for (size_t i = 0; i < count; ++i) {
-		score = 0;
+		score     = 0;
 		auto qfam = find_queue_families(devs[i]);
 
 		if (at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
@@ -311,7 +312,6 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 		VkPhysicalDeviceFeatures   dev_feats;
 		vkGetPhysicalDeviceProperties(devs[i], &dev_props);
 		vkGetPhysicalDeviceFeatures(devs[i], &dev_feats);
-
 
 		if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 			choice = devs[i];
@@ -343,6 +343,59 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	// TODO: save the selcted device somewhere else
 
 	free(devs);
+
+	return true;
+}
+
+bool create_logical_device(VulkanRuntimeInfo *vri) {
+
+	auto indices = find_queue_families(vri->physical_dev);
+
+	VkDeviceQueueCreateInfo q_create;
+	q_create.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	if (!at_bit(indices.available_families, GRAPHIC_QUEUE_INDEX)) {
+		return false;
+	}
+	q_create.queueFamilyIndex = indices.graphics;
+	q_create.queueCount       = 1;
+
+	float q_priority          = 1.0f;
+	q_create.pQueuePriorities = &q_priority;
+
+	VkPhysicalDeviceFeatures dev_features = {0};
+	VkDeviceCreateInfo       dev_create;
+	dev_create.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+	dev_create.pQueueCreateInfos    = &q_create;
+	dev_create.queueCreateInfoCount = 1;
+	dev_create.pEnabledFeatures     = &dev_features;
+
+	dev_create.enabledExtensionCount = 0;
+
+#ifdef USE_VALIDATION_LAYERS
+	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
+	dev_create.ppEnabledLayerNames = VALIDATION_LAYERS;
+#else
+	dev_create.enabledLayerCount = 0;
+#endif
+
+	auto res = vkCreateDevice(vri->physical_dev, &dev_create, nullptr, &vri->logical_dev);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "Could not create the Vulkan Logical device: %s\n", VkResult_str(res));
+		return false;
+	}
+	
+	vkGetDeviceQueue(vri->logical_dev, indices.graphics, 0, &vri->device_queues.graphics);
+	// vkGetDeviceQueue(vri->logical_dev, indices.compure, 0, &vri->device_queues.compure);
+	// vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
+	// vkGetDeviceQueue(vri->logical_dev, indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
+
+	return true;
+}
+
+
+bool destroy_logical_device(VulkanRuntimeInfo *vri) {
+	vkDestroyDevice(vri->logical_dev, nullptr);
 
 	return true;
 }

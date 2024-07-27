@@ -20,13 +20,21 @@ enum : char {
 	SPARSE_BINDING_QUEUE_INDEX
 };
 
+typedef struct {
+	VkQueue graphics;
+	VkQueue compure;
+	VkQueue transfer;
+	VkQueue sparse_binding;
+} Queues;
+
 #define USED_QUEUE_FAMILIES sizeof(QueueFamilyIndicies) % sizeof(uint32_t) - 1;
 
 typedef struct {
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
 	VkPhysicalDevice         physical_dev;
-	QueueFamilyIndicies      families;
+	VkDevice                 logical_dev;
+	Queues                   device_queues;
 } VulkanRuntimeInfo;
 
 /**
@@ -74,7 +82,7 @@ bool destroy_instance(VulkanRuntimeInfo *vri);
 bool attach_logger_callback(VulkanRuntimeInfo *vri);
 
 /**
- * destroy the vulkna callback attached to the logger function
+ * destroy the vulkan callback attached to the logger function
  *
  * @param[in] the vulkan context to use
  *
@@ -90,3 +98,22 @@ bool detach_logger_callback(VulkanRuntimeInfo *vri);
  * @return true if successfull, false if no suitable device (or at all) was found
  */
 bool pick_physical_device(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates a logical device based on the physical device
+ *
+ * @param[in] the vulkan context where to put the logical device
+ *
+ * @return true if successfull, false if no suitable device (or at all) was found
+ */
+bool create_logical_device(VulkanRuntimeInfo *vri);
+
+
+/**
+ * Destroy a VkDevice and its associated data
+ *
+ * @param[in] the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_logical_device(VulkanRuntimeInfo *vri);
