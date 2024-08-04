@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "logger.h"
+#include "vulkan_initialization.h"
 
 #include <stdio.h>
 
@@ -21,6 +22,7 @@ GLFWwindow *init_window() {
 		ht = mode->height;
 		wt = mode->width;
 	}
+
 	auto window = glfwCreateWindow(wt, ht, "ngv", nullptr, nullptr);
 
 	return window;
@@ -48,7 +50,11 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 	attach_logger_callback(vri);
 #endif
 
+	create_surface(vri, init_window());
+
 	pick_physical_device(vri);
+
+	create_logical_device(vri);
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
@@ -57,6 +63,7 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 #endif
 
 	destroy_logical_device(vri);
+	destroy_surface(vri);
 	destroy_instance(vri);
 }
 

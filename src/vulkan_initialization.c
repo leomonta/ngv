@@ -1,12 +1,11 @@
-#include "config.h"
-#include "logger.h"
-#include "utils.h"
 #include "vulkan_initialization.h"
 
-#include <GLFW/glfw3.h>
+#include "config.h"
+#include "logger.h"
+
 #include <stdlib.h>
 #include <string.h>
-#include <vulkan/vulkan_core.h>
+#include <sys/types.h>
 
 #ifdef RAW_PRINTS
 #	include <stdio.h>
@@ -119,6 +118,7 @@ const char *VkResult_str(VkResult res) {
 }
 
 bool check_validation_layer_support() {
+
 	uint32_t extension_count = 0;
 	vkEnumerateInstanceLayerProperties(&extension_count, nullptr);
 
@@ -146,6 +146,7 @@ bool check_validation_layer_support() {
  * Queries glfw about the required extensions for Vulkan and returns a <strong>mallocated array that needs to be manually freed</strong>
  */
 const char **get_required_extensions(uint32_t *count) {
+
 	// get vulkan extensions from glfw
 	const char **glfw_exts;
 
@@ -206,6 +207,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 #else
 	createInfo.enabledLayerCount = 0;
 #endif
+
 	auto exts                          = get_required_extensions(&createInfo.enabledExtensionCount);
 	createInfo.ppEnabledExtensionNames = exts;
 
@@ -221,12 +223,14 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 }
 
 bool destroy_instance(VulkanRuntimeInfo *vri) {
+
 	vkDestroyInstance(vri->instance, nullptr);
 
 	return true;
 }
 
 bool detach_logger_callback(VulkanRuntimeInfo *vri) {
+
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func == nullptr) {
 		llog(LOG_ERROR, "Could not get the debug destruction function\n");
@@ -239,6 +243,7 @@ bool detach_logger_callback(VulkanRuntimeInfo *vri) {
 }
 
 bool attach_logger_callback(VulkanRuntimeInfo *vri) {
+
 	VkDebugUtilsMessengerCreateInfoEXT info = {0};
 	info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -262,7 +267,7 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev) {
+QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev, VkSurfaceKHR surface) {
 
 	QueueFamilyIndicies res = {0};
 
@@ -289,13 +294,19 @@ QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev) {
 			res.graphics = i;
 			set_bit(res.graphics, TRANSFER_QUEUE_INDEX);
 		}
+
+		VkBool32 support = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(physical_dev, i, surface, &support);
+		if (support) {
+			res.present = i;
+		}
 	}
 
 	free(queues);
 	return res;
 }
 
-VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count) {
+VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface) {
 
 	auto     choice    = VK_NULL_HANDLE;
 	unsigned score     = 0;
@@ -303,11 +314,15 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 
 	for (size_t i = 0; i < count; ++i) {
 		score     = 0;
-		auto qfam = find_queue_families(devs[i]);
+		auto qfam = find_queue_families(devs[i], surface);
 
 		if (at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
 			continue;
 		}
+		if (at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
+			continue;
+		}
+
 		VkPhysicalDeviceProperties dev_props;
 		VkPhysicalDeviceFeatures   dev_feats;
 		vkGetPhysicalDeviceProperties(devs[i], &dev_props);
@@ -328,6 +343,7 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 }
 
 bool pick_physical_device(VulkanRuntimeInfo *vri) {
+
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(vri->instance, &count, nullptr);
 
@@ -339,8 +355,12 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
-	pick_best_device(devs, count);
-	// TODO: save the selcted device somewhere else
+	auto best_dev = pick_best_device(devs, count, vri->surface);
+	if (best_dev == VK_NULL_HANDLE) {
+		llog(LOG_FATAL, "Could not find a suitable physical device\n");
+		return false;
+	}
+	vri->physical_dev = best_dev;
 
 	free(devs);
 
@@ -349,25 +369,31 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
 bool create_logical_device(VulkanRuntimeInfo *vri) {
 
-	auto indices = find_queue_families(vri->physical_dev);
+	auto indices = find_queue_families(vri->physical_dev, vri->surface);
 
-	VkDeviceQueueCreateInfo q_create;
-	q_create.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	if (!at_bit(indices.available_families, GRAPHIC_QUEUE_INDEX)) {
+	// if bot GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
+	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) {
 		return false;
 	}
-	q_create.queueFamilyIndex = indices.graphics;
-	q_create.queueCount       = 1;
 
-	float q_priority          = 1.0f;
-	q_create.pQueuePriorities = &q_priority;
+#define num_needed_queues 2 // clangd cries if i use constexpr
+	uint32_t                needed_queues[num_needed_queues] = {indices.graphics, indices.present};
+	VkDeviceQueueCreateInfo q_create[num_needed_queues]      = {0};
+	float                   q_priority                       = 1.0f;
+	for (int i = 0; i < ENUM_COUNT; ++i) {
+
+		q_create[i].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		q_create[i].queueFamilyIndex = needed_queues[i];
+		q_create[i].queueCount       = 1;
+		q_create[i].pQueuePriorities = &q_priority;
+	}
 
 	VkPhysicalDeviceFeatures dev_features = {0};
 	VkDeviceCreateInfo       dev_create;
 	dev_create.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-	dev_create.pQueueCreateInfos    = &q_create;
-	dev_create.queueCreateInfoCount = 1;
+	dev_create.pQueueCreateInfos    = q_create;
+	dev_create.queueCreateInfoCount = num_needed_queues;
 	dev_create.pEnabledFeatures     = &dev_features;
 
 	dev_create.enabledExtensionCount = 0;
@@ -384,8 +410,9 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		llog(LOG_FATAL, "Could not create the Vulkan Logical device: %s\n", VkResult_str(res));
 		return false;
 	}
-	
+
 	vkGetDeviceQueue(vri->logical_dev, indices.graphics, 0, &vri->device_queues.graphics);
+	vkGetDeviceQueue(vri->logical_dev, indices.present, 0, &vri->device_queues.present);
 	// vkGetDeviceQueue(vri->logical_dev, indices.compure, 0, &vri->device_queues.compure);
 	// vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
 	// vkGetDeviceQueue(vri->logical_dev, indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
@@ -393,9 +420,27 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-
 bool destroy_logical_device(VulkanRuntimeInfo *vri) {
+
 	vkDestroyDevice(vri->logical_dev, nullptr);
+
+	return true;
+}
+
+bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win) {
+
+	auto res = glfwCreateWindowSurface(vri->instance, win, nullptr, &vri->surface);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "Could not create the Vulakn Surface: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	return false;
+}
+
+bool destroy_surface(VulkanRuntimeInfo *vri) {
+
+	vkDestroySurfaceKHR(vri->instance, vri->surface, nullptr);
 
 	return true;
 }
