@@ -18,7 +18,7 @@ typedef enum : char {
  *
  * @param[in] ll the new log level to use
  */
-void set_log_level(logLevel ll);
+void set_log_level(const logLevel ll);
 
 /**
  * logs a message to the standard output, with info about log level, file, line number, and function name
@@ -33,7 +33,7 @@ void set_log_level(logLevel ll);
  * @param[in] ... the variadic arguments to pass to printf
  *
  */
-void logger(logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...);
+void logger(const logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...);
 
 /**
  * Vulkan callback that internnally calls logger

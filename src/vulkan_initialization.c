@@ -14,7 +14,7 @@
 const char    *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
 const unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(char *);
 
-const char *VkResult_str(VkResult res) {
+const char *VkResult_str(const VkResult res) {
 
 	switch (res) {
 
@@ -177,7 +177,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 	appInfo.pEngineName        = "None";
 	appInfo.engineVersion      = VK_MAKE_VERSION(0, 0, 0);
-	appInfo.apiVersion         = VK_API_VERSION_1_3;
+	appInfo.apiVersion         = VK_API_VERSION_1_0;
 
 	// what we need to create with vkCreateInstance
 	VkInstanceCreateInfo createInfo = {0};

@@ -25,7 +25,7 @@ void set_log_level(logLevel ll) {
 	log_level = ll;
 }
 
-void logger(logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...) {
+void logger(const logLevel ll, const char *file_name, const unsigned line_num, const char *function_name, const char *format, ...) {
 
 	// ignore too low log levels
 	if (log_level < ll) {
@@ -33,7 +33,7 @@ void logger(logLevel ll, const char *file_name, const unsigned line_num, const c
 	}
 
 	va_list args;
-	va_start(args, mex);
+	va_start(args);
 
 	// shouldn't happen but to be safe
 	const char *prefix = "[ UNKWN ]";
@@ -58,7 +58,7 @@ void logger(logLevel ll, const char *file_name, const unsigned line_num, const c
 
 	// [LOG_LEVEL] filename:line_num in func_name(...) message
 	// [  INFO ] test.c:60 in logger(...) this is a test message
-	printf("%s %s:%d " GRY "in" RESET " %s(...)\t" RESET, prefix, file_name, line_num, function_name);
+	printf("%s %s:%d " GRY "in" RESET " %s    " RESET, prefix, file_name, line_num, function_name);
 	vprintf(format, args);
 	fflush(stdout); // ensure printing even with no \n
 
@@ -104,7 +104,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL logger_callback(VkDebugUtilsMessageSeverityFlagBi
 	}
 
 	logger(ll, "Vulkan", 0, context, pCallbackData->pMessage);
-	printf("\n"); //FIXME: This is not the best this ever, oH well
+	printf("\n"); //FIXME: This is not the best thing ever, oH well
 
 	return VK_FALSE;
 }

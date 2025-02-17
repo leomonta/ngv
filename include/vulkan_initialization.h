@@ -52,7 +52,7 @@ typedef struct {
  *
  * @return the string containing the name of the VkResult enum / define name
  */
-const char *VkResult_str(VkResult res);
+const char *VkResult_str(const VkResult res);
 
 /**
  * returns if any requested validation layer is available
