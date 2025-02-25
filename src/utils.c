@@ -24,26 +24,26 @@ bool at_bit_long(const longBitfield lbf, const unsigned char i) {
 	return (lbf & (1 << i)) != 0;
 }
 
-void set_bit(bitfield bf, const unsigned char i) {
+void set_bit(bitfield *bf, const unsigned char i) {
 
-	if (i >= (sizeof(bf) * 8)) {
+	if (i >= (sizeof(*bf) * 8)) {
 		// OOB not settable
 		return;
 	}
 
 	// bitfield mask = 1 << i;
-	bf |= 1 << i;
+	*bf |= 1 << i;
 }
 
-void set_bit_long(longBitfield lbf, const unsigned char i) {
+void set_bit_long(longBitfield *lbf, const unsigned char i) {
 
-	if (i >= (sizeof(lbf) * 8)) {
+	if (i >= (sizeof(*lbf) * 8)) {
 		// OOB not settable
 		return;
 	}
 
 	// bitfield mask = 1 << i;
-	lbf |= 1 << i;
+	*lbf |= 1 << i;
 }
 
 uint32_t popcnt(bitfield bf) {

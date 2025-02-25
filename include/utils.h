@@ -36,7 +36,7 @@ bool at_bit_long(const longBitfield lbf, const unsigned char i);
  * @param[in]
  *
  */
-void set_bit(bitfield bf, const unsigned char i);
+void set_bit(bitfield *bf, const unsigned char i);
 
 /**
  * Set the values at index `i` of the longBitfield `bf`
@@ -45,7 +45,7 @@ void set_bit(bitfield bf, const unsigned char i);
  * @param[in]
  *
  */
-void set_bit_long(longBitfield lbf, const unsigned char i);
+void set_bit_long(longBitfield *lbf, const unsigned char i);
 
 /**
  * Return the amout of bits set in the bitfield (if on x86 it will try to use the assembly instruction)
