@@ -192,7 +192,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
 
 #ifdef RAW_PRINTS
-	llog(LOG_DEBUG, "Available extensions:\n");
+	llog(LOG_DEBUG, "Available instance extensions:\n");
 
 	for (unsigned i = 0; i < extension_count; ++i) {
 		printf("\t%s\n", ext_props[i].extensionName);
@@ -284,21 +284,25 @@ QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev, VkSurface
 
 	for (uint32_t i = 0; i < count; ++i) {
 		auto qf = queues[i];
+
 		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			res.graphics = i;
-			set_bit(res.graphics, GRAPHIC_QUEUE_INDEX);
-		} else if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-			res.graphics = i;
-			set_bit(res.graphics, COMPUTE_QUEUE_INDEX);
-		} else if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-			res.graphics = i;
-			set_bit(res.graphics, TRANSFER_QUEUE_INDEX);
+			set_bit(&res.available_families, GRAPHIC_QUEUE_INDEX);
+		}
+		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			res.compute = i;
+			set_bit(&res.available_families, COMPUTE_QUEUE_INDEX);
+		}
+		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+			res.transfer = i;
+			set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
 		}
 
 		VkBool32 support = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(physical_dev, i, surface, &support);
 		if (support) {
 			res.present = i;
+			set_bit(&res.available_families, PRESENT_QUEUE_INDEX);
 		}
 	}
 
@@ -316,10 +320,10 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 		score     = 0;
 		auto qfam = find_queue_families(devs[i], surface);
 
-		if (at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
+		if (!at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
 			continue;
 		}
-		if (at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
+		if (!at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
 			continue;
 		}
 
@@ -376,11 +380,34 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-#define num_needed_queues 2 // clangd cries if i use constexpr
+	constexpr uint32_t num_needed_queues = 2;
+
 	uint32_t                needed_queues[num_needed_queues] = {indices.graphics, indices.present};
 	VkDeviceQueueCreateInfo q_create[num_needed_queues]      = {0};
-	float                   q_priority                       = 1.0f;
-	for (int i = 0; i < ENUM_COUNT; ++i) {
+
+	// I need to ensure that if a family supports multiple queues
+	// I only add it once to the logical device creation struct
+	uint32_t num_unique_queues = num_needed_queues;
+
+	// check if there is a duplice index
+	// if so replace it with the one at the end and consider the array 1 element smaller
+	// FIXME: this will bite me in the ass in the future
+	for (uint32_t i = 0; i < num_unique_queues; ++i) {
+		for (uint32_t j = 0; j < i; ++j) {
+			// duplicate
+			if (needed_queues[i] == needed_queues[j]) {
+				// replace with last element
+				needed_queues[i] = needed_queues[num_unique_queues - 1];
+				// the newly replaced could also be duplicate
+				// check it
+				--i;
+				--num_unique_queues;
+			}
+		}
+	}
+
+	float q_priority = 1.0f;
+	for (uint32_t i = 0; i < num_unique_queues; ++i) {
 
 		q_create[i].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		q_create[i].queueFamilyIndex = needed_queues[i];
@@ -393,7 +420,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	dev_create.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
 	dev_create.pQueueCreateInfos    = q_create;
-	dev_create.queueCreateInfoCount = num_needed_queues;
+	dev_create.queueCreateInfoCount = num_unique_queues;
 	dev_create.pEnabledFeatures     = &dev_features;
 
 	dev_create.enabledExtensionCount = 0;
@@ -435,7 +462,7 @@ bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win) {
 		return false;
 	}
 
-	return false;
+	return true;
 }
 
 bool destroy_surface(VulkanRuntimeInfo *vri) {
