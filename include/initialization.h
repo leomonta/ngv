@@ -8,29 +8,29 @@
 #define DEFAULT_WINDOW_WIDTH  1920
 
 /**
- * Initializes glfw and returns a newly created window
+ * Initializes `glfw` and returns a newly created window
  *
- * @return the create window
+ * @return the created window
  */
 GLFWwindow *init_window();
 
 /**
- * Terminate the window and glfw
+ * Terminate the window and `glfw`
  *
- * @param[in] the window to destroy
+ * @param[in] `wndw` the window to destroy
  */
 void terminate_window(GLFWwindow *wndw);
 
 /**
- * Initializes all the vulkan component and popolates the VulkanRuntimeInfo given 
+ * Initializes all the vulkan components and populates the given `VulkanRuntimeInfo`
  *
- * @param[out] the vulkan context that is gonna be initialized
+ * @param[out] `vri` the vulkan context that is gonna be initialized
  */
 void init_vulkan(VulkanRuntimeInfo *vri);
 
 /**
- * Destroy everything created by init_vulkan on reverse order
+ * Destroy everything created by `init_vulkan` on reverse order
  *
- * @param[in] the vulkan to terminate
+ * @param[in] `vri` the vulkan context to terminate
  */
 void terminate_vulkan(VulkanRuntimeInfo *vri);

@@ -49,23 +49,23 @@ typedef struct {
 /**
  * returns if any requested validation layer is available
  *
- * @return true if there are avilable validation layers, false otherwise
+ * @return `true` if there are available validation layers, `false` otherwise
  */
 bool check_validation_layer_support();
 
 /**
- * Creates a VkInstance
+ * Creates a `VkInstance`
  *
- * @param[out] the vulkan context where to put the created instance
+ * @param[out] `vri` the vulkan context where to put the created instance
  *
  * @return if the operation was successfull or not
  */
 bool create_instance(VulkanRuntimeInfo *vri);
 
 /**
- * Destroy a VkInstance and its associated data
+ * Destroy a `VkInstance` and its associated data
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
@@ -75,7 +75,7 @@ bool destroy_instance(VulkanRuntimeInfo *vri);
  * Creates a vulkan callback to attach to the validation layer
  * It uses the logger function
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
  * @return true if successfull, false otherwise
  */
@@ -84,7 +84,7 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri);
 /**
  * destroy the vulkan callback attached to the logger function
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
  * @return true if successfull, false otherwise
  */
@@ -93,44 +93,44 @@ bool detach_logger_callback(VulkanRuntimeInfo *vri);
 /**
  * List the available physical devices to use
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
- * @return true if successfull, false if no suitable device (or at all) was found
+ * @return `true` if successfull, `false` if no suitable device (or at all) was found
  */
 bool pick_physical_device(VulkanRuntimeInfo *vri);
 
 /**
- * Creates a logical device based on the physical device
+ * Creates a logical device (`VkDevice`) based on the physical device
  *
- * @param[in] the vulkan context where to put the logical device
+ * @param[in] `vri` the vulkan context where to put the logical device
  *
- * @return true if successfull, false if no suitable device (or at all) was found
+ * @return `true` if successfull, `false` if no suitable device (or at all) was found
  */
 bool create_logical_device(VulkanRuntimeInfo *vri);
 
 /**
- * Destroy a VkDevice and its associated data
+ * Destroy a `VkDevice` and its associated data
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
 bool destroy_logical_device(VulkanRuntimeInfo *vri);
 
 /**
- * Creates a system specific KHRsurface (Thansks GLFW) to render stuff to
+ * Creates a system specific `KHRsurface` (Thansks GLFW) to render stuff to
  *
- * @param[in] vri the vulkan context to use
- * @param[in] window the glfw window to crate the surface fir
+ * @param[in] `vri` the vulkan context to use
+ * @param[in] `window` the glfw window to crate the surface for
  *
  * @return if the operation was successfull or not
  */
 bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win);
 
 /**
- * Destroy a VkSurface and its associated data
+ * Destroy a `VkSurface` and its associated data
  *
- * @param[in] the vulkan context to use
+ * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */

@@ -24,7 +24,9 @@ bool at_bit_long(const longBitfield lbf, const unsigned char i) {
 	return (lbf & (1 << i)) != 0;
 }
 
-void set_bit(bitfield *bf, const unsigned char i) {
+// internal bit setting
+
+void _i_set_bit(bitfield *bf, const unsigned char i, const bool val) {
 
 	if (i >= (sizeof(*bf) * 8)) {
 		// OOB not settable
@@ -32,10 +34,10 @@ void set_bit(bitfield *bf, const unsigned char i) {
 	}
 
 	// bitfield mask = 1 << i;
-	*bf |= 1 << i;
+	*bf |= (unsigned)(val << i);
 }
 
-void set_bit_long(longBitfield *lbf, const unsigned char i) {
+void _i_set_bit_long(longBitfield *lbf, const unsigned char i, const bool val) {
 
 	if (i >= (sizeof(*lbf) * 8)) {
 		// OOB not settable
@@ -43,7 +45,23 @@ void set_bit_long(longBitfield *lbf, const unsigned char i) {
 	}
 
 	// bitfield mask = 1 << i;
-	*lbf |= 1 << i;
+	*lbf |= (unsigned)(val << i);
+}
+
+void set_bit(bitfield *bf, const unsigned char i) {
+	_i_set_bit(bf, i, true);
+}
+
+void set_bit_long(longBitfield *lbf, const unsigned char i) {
+	_i_set_bit_long(lbf, i, true);
+}
+
+void unset_bit(bitfield *bf, const unsigned char i) {
+	_i_set_bit(bf, i, false);
+}
+
+void unset_bit_long(longBitfield *lbf, const unsigned char i) {
+	_i_set_bit_long(lbf, i, false);
 }
 
 uint32_t popcnt(bitfield bf) {

@@ -12,8 +12,8 @@ typedef uint64_t longBitfield;
 /**
  * Retrives the values at index `i` from the bitfield `bf`
  *
- * @param[in]
- * @param[in]
+ * @param[in] `bf` the `bitfield` to retrive the bit from
+ * @param[in] `i` the index of the desired bit
  *
  * @return the value of the bit at the index `i` of `false` if out of bounds
  */
@@ -22,36 +22,54 @@ bool at_bit(const bitfield bf, const unsigned char i);
 /**
  * Retrives the values at index `i` from the longBitfield `lbf`
  *
- * @param[in]
- * @param[in]
+ * @param[in] `lbf` the long `bitfield` to retrive the bit from
+ * @param[in] `i` the index of the desired bit
  *
  * @return the value of the bit at the index `i` of `false` if out of bounds
  */
 bool at_bit_long(const longBitfield lbf, const unsigned char i);
 
 /**
- * Set the values at index `i` of the bitfield `bf`
+ * Set the value `true` at index `i` of the bitfield `bf`
  *
- * @param[in]
- * @param[in]
+ * @param[in] `bf` the `bitfield` to set the bit at
+ * @param[in] `i` the infex of the bit to get
  *
  */
 void set_bit(bitfield *bf, const unsigned char i);
 
 /**
- * Set the values at index `i` of the longBitfield `bf`
+ * Set the value `true` at index `i` of the longBitfield `bf`
  *
- * @param[in]
- * @param[in]
+ * @param[in] `lbf` the long `bitfield` to set the bit at
+ * @param[in] `i` the infex of the bit to get
  *
  */
 void set_bit_long(longBitfield *lbf, const unsigned char i);
 
+/*
+ * Set the value `false` at index `i` of the bitfield `bf`
+ *
+ * @param[in] `bf` the `bitfield` to set the bit at
+ * @param[in] `i` the infex of the bit to get
+ *
+ */
+void unset_bit(bitfield *bf, const unsigned char i);
+
+/**
+ * Set the value `false` at index `i` of the longBitfield `bf`
+ *
+ * @param[in] `lbf` the long `bitfield` to set the bit at
+ * @param[in] `i` the infex of the bit to get
+ *
+ */
+void unset_bit_long(longBitfield *lbf, const unsigned char i);
+
 /**
  * Return the amout of bits set in the bitfield (if on x86 it will try to use the assembly instruction)
  *
- * @param[in] the `bitfield` from where to count the bits
+ * @param[in] `bf` the `bitfield` from where to count the bits
  *
- * @return the number if bits set in bitfield
+ * @return the number of set bits in `bf`
  */
 uint32_t popcnt(bitfield bf);
