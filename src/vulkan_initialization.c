@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "logger.h"
+#include "vkinit_utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -11,111 +12,11 @@
 #	include <stdio.h>
 #endif
 
-const char    *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
-const unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(char *);
+const char    *PHYSICAL_EXTENSIONS[]    = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+const unsigned PHYSICAL_EXTENSION_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(char *);
+const char    *VALIDATION_LAYERS[]      = {"VK_LAYER_KHRONOS_validation"};
+const unsigned VALIDATION_LAYERS_COUNT  = sizeof(VALIDATION_LAYERS) / sizeof(char *);
 
-const char *VkResult_str(const VkResult res) {
-
-	switch (res) {
-
-	case VK_SUCCESS:
-		return "VK_SUCCESS";
-	case VK_NOT_READY:
-		return "VK_NOT_READY";
-	case VK_TIMEOUT:
-		return "VK_TIMEOUT";
-	case VK_EVENT_SET:
-		return "VK_EVENT_SET";
-	case VK_EVENT_RESET:
-		return "VK_EVENT_RESET";
-	case VK_INCOMPLETE:
-		return "VK_INCOMPLETE";
-	case VK_ERROR_OUT_OF_HOST_MEMORY:
-		return "VK_ERROR_OUT_OF_HOST_MEMORY";
-	case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-		return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-	case VK_ERROR_INITIALIZATION_FAILED:
-		return "VK_ERROR_INITIALIZATION_FAILED";
-	case VK_ERROR_DEVICE_LOST:
-		return "VK_ERROR_DEVICE_LOST";
-	case VK_ERROR_MEMORY_MAP_FAILED:
-		return "VK_ERROR_MEMORY_MAP_FAILED";
-	case VK_ERROR_LAYER_NOT_PRESENT:
-		return "VK_ERROR_LAYER_NOT_PRESENT";
-	case VK_ERROR_EXTENSION_NOT_PRESENT:
-		return "VK_ERROR_EXTENSION_NOT_PRESENT";
-	case VK_ERROR_FEATURE_NOT_PRESENT:
-		return "VK_ERROR_FEATURE_NOT_PRESENT";
-	case VK_ERROR_INCOMPATIBLE_DRIVER:
-		return "VK_ERROR_INCOMPATIBLE_DRIVER";
-	case VK_ERROR_TOO_MANY_OBJECTS:
-		return "VK_ERROR_TOO_MANY_OBJECTS";
-	case VK_ERROR_FORMAT_NOT_SUPPORTED:
-		return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-	case VK_ERROR_FRAGMENTED_POOL:
-		return "VK_ERROR_FRAGMENTED_POOL";
-	case VK_ERROR_UNKNOWN:
-		return "VK_ERROR_UNKNOWN";
-	case VK_ERROR_OUT_OF_POOL_MEMORY:
-		return "VK_ERROR_OUT_OF_POOL_MEMORY";
-	case VK_ERROR_INVALID_EXTERNAL_HANDLE:
-		return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-	case VK_ERROR_FRAGMENTATION:
-		return "VK_ERROR_FRAGMENTATION";
-	case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
-		return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
-	case VK_PIPELINE_COMPILE_REQUIRED:
-		return "VK_PIPELINE_COMPILE_REQUIRED";
-	case VK_ERROR_SURFACE_LOST_KHR:
-		return "VK_ERROR_SURFACE_LOST_KHR";
-	case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-		return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-	case VK_SUBOPTIMAL_KHR:
-		return "VK_SUBOPTIMAL_KHR";
-	case VK_ERROR_OUT_OF_DATE_KHR:
-		return "VK_ERROR_OUT_OF_DATE_KHR";
-	case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
-		return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-	case VK_ERROR_VALIDATION_FAILED_EXT:
-		return "VK_ERROR_VALIDATION_FAILED_EXT";
-	case VK_ERROR_INVALID_SHADER_NV:
-		return "VK_ERROR_INVALID_SHADER_NV";
-	case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
-	case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
-	case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
-	case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
-	case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
-	case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:
-		return "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
-	case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
-		return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-	case VK_ERROR_NOT_PERMITTED_KHR:
-		return "VK_ERROR_NOT_PERMITTED_KHR";
-	case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
-		return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-	case VK_THREAD_IDLE_KHR:
-		return "VK_THREAD_IDLE_KHR";
-	case VK_THREAD_DONE_KHR:
-		return "VK_THREAD_DONE_KHR";
-	case VK_OPERATION_DEFERRED_KHR:
-		return "VK_OPERATION_DEFERRED_KHR";
-	case VK_OPERATION_NOT_DEFERRED_KHR:
-		return "VK_OPERATION_NOT_DEFERRED_KHR";
-	case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:
-		return "VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR";
-	case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
-		return "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
-	case VK_INCOMPATIBLE_SHADER_BINARY_EXT:
-		return "VK_INCOMPATIBLE_SHADER_BINARY_EXT";
-	default:
-		return "Unkown Error";
-	};
-}
 
 bool check_validation_layer_support() {
 
@@ -143,7 +44,7 @@ bool check_validation_layer_support() {
 }
 
 /**
- * Queries glfw about the required extensions for Vulkan and returns a <strong>mallocated array that needs to be manually freed</strong>
+ * Queries glfw about the required extensions for Vulkan and returns a **mallocated array that needs to be manually freed**
  */
 const char **get_required_extensions(uint32_t *count) {
 
@@ -229,19 +130,6 @@ bool destroy_instance(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-bool detach_logger_callback(VulkanRuntimeInfo *vri) {
-
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func == nullptr) {
-		llog(LOG_ERROR, "Could not get the debug destruction function\n");
-		return false;
-	}
-
-	func(vri->instance, vri->debug_logger, nullptr);
-
-	return true;
-}
-
 bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 
 	VkDebugUtilsMessengerCreateInfoEXT info = {0};
@@ -267,84 +155,19 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-QueueFamilyIndicies find_queue_families(VkPhysicalDevice physical_dev, VkSurfaceKHR surface) {
+bool detach_logger_callback(VulkanRuntimeInfo *vri) {
 
-	QueueFamilyIndicies res = {0};
-
-	uint32_t count = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(physical_dev, &count, nullptr);
-
-	if (count <= 0) {
-		llog(LOG_ERROR, "Could not find any queue family\n");
-		return res;
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func == nullptr) {
+		llog(LOG_ERROR, "Could not get the debug destruction function\n");
+		return false;
 	}
 
-	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
-	vkGetPhysicalDeviceQueueFamilyProperties(physical_dev, &count, queues);
+	func(vri->instance, vri->debug_logger, nullptr);
 
-	for (uint32_t i = 0; i < count; ++i) {
-		auto qf = queues[i];
-
-		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			res.graphics = i;
-			set_bit(&res.available_families, GRAPHIC_QUEUE_INDEX);
-		}
-		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-			res.compute = i;
-			set_bit(&res.available_families, COMPUTE_QUEUE_INDEX);
-		}
-		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-			res.transfer = i;
-			set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
-		}
-
-		VkBool32 support = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(physical_dev, i, surface, &support);
-		if (support) {
-			res.present = i;
-			set_bit(&res.available_families, PRESENT_QUEUE_INDEX);
-		}
-	}
-
-	free(queues);
-	return res;
+	return true;
 }
 
-VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface) {
-
-	auto     choice    = VK_NULL_HANDLE;
-	unsigned score     = 0;
-	unsigned old_score = 0;
-
-	for (size_t i = 0; i < count; ++i) {
-		score     = 0;
-		auto qfam = find_queue_families(devs[i], surface);
-
-		if (!at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
-			continue;
-		}
-		if (!at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
-			continue;
-		}
-
-		VkPhysicalDeviceProperties dev_props;
-		VkPhysicalDeviceFeatures   dev_feats;
-		vkGetPhysicalDeviceProperties(devs[i], &dev_props);
-		vkGetPhysicalDeviceFeatures(devs[i], &dev_feats);
-
-		if (dev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-			choice = devs[i];
-			break;
-		}
-
-		if (old_score < score) {
-			old_score = score;
-			choice    = devs[i];
-		}
-	}
-
-	return choice;
-}
 
 bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
@@ -423,7 +246,8 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	dev_create.queueCreateInfoCount = num_unique_queues;
 	dev_create.pEnabledFeatures     = &dev_features;
 
-	dev_create.enabledExtensionCount = 0;
+	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
+	dev_create.enabledExtensionCount   = 1;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;

@@ -45,14 +45,6 @@ typedef struct {
 	Queues                   device_queues;
 } VulkanRuntimeInfo;
 
-/**
- * Given a VkResult returns its 'define' name
- *
- * @param[in] res the vkResult to 'stringify'
- *
- * @return the string containing the name of the VkResult enum / define name
- */
-const char *VkResult_str(const VkResult res);
 
 /**
  * returns if any requested validation layer is available
