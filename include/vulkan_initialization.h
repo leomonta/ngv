@@ -44,6 +44,9 @@ typedef struct {
 	VkDevice                 logical_dev;
 	Queues                   device_queues;
 	VkSwapchainKHR           swapchain;
+	VkImage                 *sc_buffers;
+	VkExtent2D               sc_extent;
+	VkFormat                 sc_format;
 } VulkanRuntimeInfo;
 
 typedef struct {

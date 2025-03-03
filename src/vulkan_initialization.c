@@ -298,7 +298,7 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 
 	auto format = pick_swapchain_format(scd.formats, scd.formats_count);
 	auto mode   = pick_swapchain_mode(scd.modes, scd.modes_count);
-	auto extent = pick_swapchain_extent(&scd.capabilities, vri->sys_window);
+	vri->sc_extent = pick_swapchain_extent(&scd.capabilities, vri->sys_window);
 
 	uint32_t image_count = scd.capabilities.minImageCount + 1;
 
@@ -313,7 +313,7 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	sc_create.minImageCount            = image_count;
 	sc_create.imageFormat              = format.format;
 	sc_create.imageColorSpace          = format.colorSpace;
-	sc_create.imageExtent              = extent;
+	sc_create.imageExtent              = vri->sc_extent;
 	sc_create.imageArrayLayers         = 1;
 	sc_create.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	sc_create.preTransform             = scd.capabilities.currentTransform;
@@ -346,9 +346,17 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	}
 
 	vri->swapchain = sc;
+	vri->sc_format = format.format;
 
 	free(scd.formats);
 	free(scd.modes);
+
+	// retrieving images
+	uint32_t count;
+	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, nullptr);
+	// count > 0 cuz the creation of the swapchain was successfull
+	vri->sc_buffers = malloc(sizeof(VkImage) * count);
+	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, vri->sc_buffers);
 
 	return true;
 }
