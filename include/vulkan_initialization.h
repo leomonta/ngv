@@ -31,9 +31,18 @@ typedef struct {
 	VkQueue transfer;       // unused
 	VkQueue sparse_binding; // unused
 	VkQueue present;
-} Queues;
+} QueuesInfo;
 
 #define USED_QUEUE_FAMILIES sizeof(QueueFamilyIndicies) % sizeof(uint32_t) - 1;
+
+typedef struct {
+	VkSwapchainKHR swapchain;
+	size_t         buffers_count;
+	VkImage       *buffers;
+	VkImageView   *views;
+	VkExtent2D     extent;
+	VkFormat       format;
+} SwapchainInfo;
 
 typedef struct {
 	VkInstance               instance;
@@ -42,11 +51,8 @@ typedef struct {
 	VkSurfaceKHR             surface;
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
-	Queues                   device_queues;
-	VkSwapchainKHR           swapchain;
-	VkImage                 *sc_buffers;
-	VkExtent2D               sc_extent;
-	VkFormat                 sc_format;
+	QueuesInfo               device_queues;
+	SwapchainInfo            swapchain;
 } VulkanRuntimeInfo;
 
 typedef struct {
@@ -163,3 +169,21 @@ bool create_swapchain(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_swapchain(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates images views for the swapchain images
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_image_views(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroy the images views of the swapchain images
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_image_views(VulkanRuntimeInfo *vri);

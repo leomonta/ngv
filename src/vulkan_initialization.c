@@ -296,9 +296,9 @@ bool destroy_surface(VulkanRuntimeInfo *vri) {
 bool create_swapchain(VulkanRuntimeInfo *vri) {
 	auto scd = get_swapchain_details(vri->physical_dev, vri->surface);
 
-	auto format = pick_swapchain_format(scd.formats, scd.formats_count);
-	auto mode   = pick_swapchain_mode(scd.modes, scd.modes_count);
-	vri->sc_extent = pick_swapchain_extent(&scd.capabilities, vri->sys_window);
+	auto format           = pick_swapchain_format(scd.formats, scd.formats_count);
+	auto mode             = pick_swapchain_mode(scd.modes, scd.modes_count);
+	vri->swapchain.extent = pick_swapchain_extent(&scd.capabilities, vri->sys_window);
 
 	uint32_t image_count = scd.capabilities.minImageCount + 1;
 
@@ -313,7 +313,7 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	sc_create.minImageCount            = image_count;
 	sc_create.imageFormat              = format.format;
 	sc_create.imageColorSpace          = format.colorSpace;
-	sc_create.imageExtent              = vri->sc_extent;
+	sc_create.imageExtent              = vri->swapchain.extent;
 	sc_create.imageArrayLayers         = 1;
 	sc_create.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	sc_create.preTransform             = scd.capabilities.currentTransform;
@@ -345,8 +345,8 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 		;
 	}
 
-	vri->swapchain = sc;
-	vri->sc_format = format.format;
+	vri->swapchain.swapchain = sc;
+	vri->swapchain.format    = format.format;
 
 	free(scd.formats);
 	free(scd.modes);
@@ -355,14 +355,58 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	uint32_t count;
 	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
-	vri->sc_buffers = malloc(sizeof(VkImage) * count);
-	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, vri->sc_buffers);
+	vri->swapchain.buffers = malloc(sizeof(VkImage) * count);
+	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, vri->swapchain.buffers);
 
 	return true;
 }
 
 bool destroy_swapchain(VulkanRuntimeInfo *vri) {
-	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain, nullptr);
+
+	free(vri->swapchain.buffers);
+
+	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+
+	return true;
+}
+
+bool create_image_views(VulkanRuntimeInfo *vri) {
+
+	vri->swapchain.views = malloc(sizeof(VkImageView) * vri->swapchain.buffers_count);
+
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+
+		VkImageViewCreateInfo vw_create           = {0};
+		vw_create.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		vw_create.image                           = vri->swapchain.buffers[i];
+		vw_create.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+		vw_create.format                          = vri->swapchain.format;
+		vw_create.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+		vw_create.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+		vw_create.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+		vw_create.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+		vw_create.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		vw_create.subresourceRange.baseMipLevel   = 0;
+		vw_create.subresourceRange.levelCount     = 1;
+		vw_create.subresourceRange.baseArrayLayer = 0;
+		vw_create.subresourceRange.layerCount     = 1;
+
+		auto res = vkCreateImageView(vri->logical_dev, &vw_create, nullptr, &vri->swapchain.views[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[Swapchain] Could not create image views: %s\n", VkResult_str(res));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool destroy_image_views(VulkanRuntimeInfo *vri) {
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+		vkDestroyImageView(vri->logical_dev, vri->swapchain.views[i], nullptr);
+	}
+
+	free(vri->swapchain.views);
 
 	return true;
 }
