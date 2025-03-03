@@ -101,6 +101,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL logger_callback(VkDebugUtilsMessageSeverityFlagBi
 		context = "Performance";
 		break;
 	default:
+		context = "Unknown";
 	}
 
 	logger(ll, "Vulkan", 0, context, pCallbackData->pMessage);

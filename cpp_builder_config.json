@@ -28,5 +28,10 @@
 	"release": {
 		"compiler_args": "-Ofast -DNDEBUG -std=c2x",
 		"linker_args": "rcs"
+	},
+
+	"analyze": {
+		"compiler_args": "-g3 -std=c2x -Wno-missing-field-initializers -DDEBUG -Wno-unknown-pragmas -Wall -Wconversion -Wshadow -Wextra -fanalyzer",
+		"linker_args": "rcs"
 	}
 }
