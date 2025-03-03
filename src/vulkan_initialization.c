@@ -70,19 +70,19 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 
 	// Application information, fairly trivial / uninmportant
 
-	VkApplicationInfo appInfo = {0};
+	VkApplicationInfo app_create = {0};
 
-	appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName   = "Neon Genesis Vulkan";
-	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
-	appInfo.pEngineName        = "None";
-	appInfo.engineVersion      = VK_MAKE_VERSION(0, 0, 0);
-	appInfo.apiVersion         = VK_API_VERSION_1_0;
+	app_create.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	app_create.pApplicationName   = "Neon Genesis Vulkan";
+	app_create.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
+	app_create.pEngineName        = "None";
+	app_create.engineVersion      = VK_MAKE_VERSION(0, 0, 0);
+	app_create.apiVersion         = VK_API_VERSION_1_0;
 
 	// what we need to create with vkCreateInstance
 	VkInstanceCreateInfo createInfo = {0};
 	createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	createInfo.pApplicationInfo     = &appInfo;
+	createInfo.pApplicationInfo     = &app_create;
 
 	// how many instance we can use
 	uint32_t extension_count = 0;
@@ -131,12 +131,12 @@ bool destroy_instance(VulkanRuntimeInfo *vri) {
 
 bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 
-	VkDebugUtilsMessengerCreateInfoEXT info = {0};
-	info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	info.pfnUserCallback                    = logger_callback;
-	info.pUserData                          = nullptr; // Optional
+	VkDebugUtilsMessengerCreateInfoEXT db_create = {0};
+	db_create.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	db_create.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	db_create.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	db_create.pfnUserCallback                    = logger_callback;
+	db_create.pUserData                          = nullptr; // Optional
 
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkCreateDebugUtilsMessengerEXT");
 
@@ -144,7 +144,7 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 		llog(LOG_ERROR, "Could not get the debug callback creation function\n");
 		return false;
 	}
-	auto res = func(vri->instance, &info, nullptr, &vri->debug_logger);
+	auto res = func(vri->instance, &db_create, nullptr, &vri->debug_logger);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_ERROR, "The debug callback creation function returned %s, could not create the debug callback\n", VkResult_str(res));
