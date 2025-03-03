@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-QueueFamilyIndicies find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
 	QueueFamilyIndicies res = {0};
 
@@ -71,6 +71,15 @@ bool has_required_extensions(VkPhysicalDevice device) {
 	return res;
 }
 
+/*
+ * Honestly 99% of the there are going to be:
+ * 1 dedicated GPU (desktop)
+ * 2 integrated GPU (laptop)
+ * 3 integrated + dedicated GPU (high-end laptop)
+ *
+ * So the selection should be much simpler
+ * but this way I can stop the program if the device does not support features that are necessary to me
+ */
 VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface) {
 
 	auto     choice    = VK_NULL_HANDLE;
@@ -79,7 +88,7 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 
 	for (size_t i = 0; i < count; ++i) {
 		score     = 0;
-		auto qfam = find_queue_families(devs[i], surface);
+		auto qfam = get_queue_families(devs[i], surface);
 
 		// ----
 		// necessary stuff
@@ -93,6 +102,20 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 
 		if (!has_required_extensions(devs[i])) {
 			continue;
+		}
+
+		auto swd = get_swapchain_details(devs[i], surface);
+		if (swd.formats_count == 0 || swd.modes_count == 0) {
+			continue;
+		}
+
+		// TODO:
+		// free the swapchain details (swd) since I don't need these anymore
+		if (swd.modes != nullptr) {
+			free(swd.modes);
+		}
+		if (swd.formats != nullptr) {
+			free(swd.formats);
 		}
 
 		// ----
@@ -221,4 +244,78 @@ const char *VkResult_str(const VkResult res) {
 	default:
 		return "Unkown Error";
 	};
+}
+
+swapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	swapchainDetails res = {0};
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &res.capabilities);
+
+	uint32_t count;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
+
+	if (count != 0) {
+		res.formats = malloc(sizeof(VkSurfaceFormatKHR) * count);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, res.formats);
+		res.formats_count = count;
+	}
+
+	count = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
+
+	if (count != 0) {
+		res.modes = malloc(sizeof(VkPresentModeKHR) * count);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, res.modes);
+		res.modes_count = count;
+	}
+
+	return res;
+}
+
+VkSurfaceFormatKHR pick_swapchain_format(const VkSurfaceFormatKHR *formats, const size_t count) {
+
+	// attempt to choose a stadard 888 srgb
+	for (size_t i = 0; i < count; ++i) {
+		auto fmt = formats[i];
+		if (fmt.format == VK_FORMAT_B8G8R8A8_SRGB && fmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+			return fmt;
+		}
+	}
+
+	llog(LOG_WARNING, "[Swapchain] Could not choose the preferred format\n");
+
+	// else whatever
+	return formats[0];
+}
+
+VkPresentModeKHR pick_swapchain_mode(const VkPresentModeKHR *modes, const size_t count) {
+	// attempt to choose MAILBOX
+	for (size_t i = 0; i < count; ++i) {
+		auto md = modes[i];
+		if (md == VK_PRESENT_MODE_MAILBOX_KHR) {
+			return md;
+		}
+	}
+
+	llog(LOG_WARNING, "[Swapchain] Could not choose the preferred present mode (MAILBOX). Using the default (FIFO)\n");
+
+	// else FIFO is guaranteed to exists
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindow *win ) {
+	// if width or height is `0xffffffff` we have free reign on the swachain extent
+	// else we just use the maximum
+	if (caps->currentExtent.width != 0xffffffff) {
+		return caps->maxImageExtent;
+		llog(LOG_WARNING, "[Swapchain] Could not choose the preferred extent\n");
+	} else {
+		uint32_t width, height;
+		glfwGetFramebufferSize(win, (int*)(&width), (int*)(&height));
+
+		// the specification specifies that the `min` and `max` `ImageExtent`are not valid if the special value is present in `currentExtent`
+		// https://vulkan.lunarg.com/doc/view/latest/windows/apispec.html#VkSurfaceCapabilitiesKHR
+
+		return (VkExtent2D){width, height};
+	}
 }

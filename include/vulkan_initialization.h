@@ -43,8 +43,16 @@ typedef struct {
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
 	Queues                   device_queues;
+	VkSwapchainKHR           swapchain;
 } VulkanRuntimeInfo;
 
+typedef struct {
+	VkSurfaceCapabilitiesKHR capabilities;
+	VkSurfaceFormatKHR      *formats;
+	size_t                   formats_count;
+	VkPresentModeKHR        *modes;
+	size_t                   modes_count;
+} swapchainDetails;
 
 /**
  * returns if any requested validation layer is available
@@ -121,11 +129,10 @@ bool destroy_logical_device(VulkanRuntimeInfo *vri);
  * Creates a system specific `KHRsurface` (Thansks GLFW) to render stuff to
  *
  * @param[in] `vri` the vulkan context to use
- * @param[in] `window` the glfw window to crate the surface for
  *
  * @return if the operation was successfull or not
  */
-bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win);
+bool create_surface(VulkanRuntimeInfo *vri);
 
 /**
  * Destroy a `VkSurface` and its associated data
@@ -135,3 +142,21 @@ bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win);
  * @return if the operation was successfull or not
  */
 bool destroy_surface(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates a swapchain based on the best formats and modes available
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_swapchain(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroy a swapchain and its associated data
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_swapchain(VulkanRuntimeInfo *vri);

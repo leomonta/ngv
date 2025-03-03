@@ -84,3 +84,15 @@ uint32_t popcnt(bitfield bf) {
 #endif
 	return cnt;
 }
+
+uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
+	if (val > max) {
+		return max;
+	}
+
+	if (val < min) {
+		return min;
+	}
+
+	return val;
+}

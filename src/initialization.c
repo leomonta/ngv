@@ -49,12 +49,15 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 #ifdef USE_VALIDATION_LAYERS
 	attach_logger_callback(vri);
 #endif
+	vri->sys_window = init_window();
 
-	create_surface(vri, init_window());
+	create_surface(vri);
 
 	pick_physical_device(vri);
 
 	create_logical_device(vri);
+
+	create_swapchain(vri);
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
@@ -62,8 +65,8 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	detach_logger_callback(vri);
 #endif
 
+	destroy_swapchain(vri);
 	destroy_logical_device(vri);
 	destroy_surface(vri);
 	destroy_instance(vri);
 }
-

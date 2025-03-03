@@ -17,7 +17,6 @@ const unsigned PHYSICAL_EXTENSION_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(c
 const char    *VALIDATION_LAYERS[]      = {"VK_LAYER_KHRONOS_validation"};
 const unsigned VALIDATION_LAYERS_COUNT  = sizeof(VALIDATION_LAYERS) / sizeof(char *);
 
-
 bool check_validation_layer_support() {
 
 	uint32_t extension_count = 0;
@@ -117,7 +116,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	free(exts);
 
 	if (result != VK_SUCCESS) {
-		llog(LOG_ERROR, "Could not create vulkan instance: %s\n", VkResult_str(result));
+		llog(LOG_FATAL, "Could not create vulkan instance: %s\n", VkResult_str(result));
 		return false;
 	}
 	return true;
@@ -168,7 +167,6 @@ bool detach_logger_callback(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-
 bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
 	uint32_t count = 0;
@@ -196,7 +194,7 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
 bool create_logical_device(VulkanRuntimeInfo *vri) {
 
-	auto indices = find_queue_families(vri->physical_dev, vri->surface);
+	auto indices = get_queue_families(vri->physical_dev, vri->surface);
 
 	// if bot GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
 	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) {
@@ -242,10 +240,9 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	VkDeviceCreateInfo       dev_create;
 	dev_create.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-	dev_create.pQueueCreateInfos    = q_create;
-	dev_create.queueCreateInfoCount = num_unique_queues;
-	dev_create.pEnabledFeatures     = &dev_features;
-
+	dev_create.pQueueCreateInfos       = q_create;
+	dev_create.queueCreateInfoCount    = num_unique_queues;
+	dev_create.pEnabledFeatures        = &dev_features;
 	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
 	dev_create.enabledExtensionCount   = 1;
 
@@ -278,11 +275,11 @@ bool destroy_logical_device(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win) {
+bool create_surface(VulkanRuntimeInfo *vri) {
 
-	auto res = glfwCreateWindowSurface(vri->instance, win, nullptr, &vri->surface);
+	auto res = glfwCreateWindowSurface(vri->instance, vri->sys_window, nullptr, &vri->surface);
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "Could not create the Vulakn Surface: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "Could not create the Vulkan Surface: %s\n", VkResult_str(res));
 		return false;
 	}
 
@@ -292,6 +289,72 @@ bool create_surface(VulkanRuntimeInfo *vri, GLFWwindow *win) {
 bool destroy_surface(VulkanRuntimeInfo *vri) {
 
 	vkDestroySurfaceKHR(vri->instance, vri->surface, nullptr);
+
+	return true;
+}
+
+bool create_swapchain(VulkanRuntimeInfo *vri) {
+	auto scd = get_swapchain_details(vri->physical_dev, vri->surface);
+
+	auto format = pick_swapchain_format(scd.formats, scd.formats_count);
+	auto mode   = pick_swapchain_mode(scd.modes, scd.modes_count);
+	auto extent = pick_swapchain_extent(&scd.capabilities, vri->sys_window);
+
+	uint32_t image_count = scd.capabilities.minImageCount + 1;
+
+	// maxImageCount == 0 means that there isn't a hard maximum
+	if (scd.capabilities.maxImageCount > 0) {
+		image_count = clamp(image_count, scd.capabilities.minImageCount, scd.capabilities.maxImageCount);
+	}
+
+	VkSwapchainCreateInfoKHR sc_create = {0};
+	sc_create.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	sc_create.surface                  = vri->surface;
+	sc_create.minImageCount            = image_count;
+	sc_create.imageFormat              = format.format;
+	sc_create.imageColorSpace          = format.colorSpace;
+	sc_create.imageExtent              = extent;
+	sc_create.imageArrayLayers         = 1;
+	sc_create.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	sc_create.preTransform             = scd.capabilities.currentTransform;
+	sc_create.compositeAlpha           = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	sc_create.presentMode              = mode;
+	sc_create.clipped                  = VK_TRUE;
+	sc_create.oldSwapchain             = VK_NULL_HANDLE;
+
+	QueueFamilyIndicies indices              = get_queue_families(vri->physical_dev, vri->surface);
+	uint32_t            queueFamilyIndices[] = {indices.graphics, indices.present};
+
+	if (indices.graphics != indices.present) {
+		sc_create.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+		sc_create.queueFamilyIndexCount = 2;
+		sc_create.pQueueFamilyIndices   = queueFamilyIndices;
+	} else {
+		sc_create.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+		sc_create.queueFamilyIndexCount = 0;       // Optional
+		sc_create.pQueueFamilyIndices   = nullptr; // Optional
+	}
+
+	VkSwapchainKHR sc;
+
+	auto res = vkCreateSwapchainKHR(vri->logical_dev, &sc_create, nullptr, &sc);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[Swapchain] Could no create the Swapchain: %s\n", VkResult_str(res));
+		return false;
+		;
+	}
+
+	vri->swapchain = sc;
+
+	free(scd.formats);
+	free(scd.modes);
+
+	return true;
+}
+
+bool destroy_swapchain(VulkanRuntimeInfo *vri) {
+	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain, nullptr);
 
 	return true;
 }

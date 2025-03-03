@@ -73,3 +73,14 @@ void unset_bit_long(longBitfield *lbf, const unsigned char i);
  * @return the number of set bits in `bf`
  */
 uint32_t popcnt(bitfield bf);
+
+/**
+ * clamps `val` between `min` and `max`
+ *
+ * @param[in] `val` the value to clamp
+ * @param[in] `min` the lower bound
+ * @param[in] `max` the upper bound
+ *
+ * @return the clamped value
+ */
+uint32_t clamp(uint32_t val, uint32_t min, uint32_t max);

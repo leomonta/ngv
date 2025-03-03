@@ -5,12 +5,12 @@
 /**
  * Queries the queue capabilities of the device and returns the indicies of the available ones
  *
- * @param[in] `device` the device to find the available families from
+ * @param[in] `device` the device to get the available families from
  * @param[in] `surface` needed to check for surface specific families
  *
  * @return `true` if the given device satisfies the defined extensions, `false`
  */
-QueueFamilyIndicies find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
+QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Checks if the give `VkPhysicalDevice` supports some required extension to render on screen (e.g. swapchain)
@@ -41,3 +41,44 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
  * @return the string containing the name of the `VkResult` enum / define name
  */
 const char *VkResult_str(const VkResult res);
+
+/**
+ * Returns the details of the device swapchain
+ *
+ * @param[in] `device` the physical device that supports the swapchain
+ * @param[in] `surface` the surface of the swapchain
+ *
+ * @return a `swapchain` details struct
+ */
+swapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+/**
+ * Picks the 'best' surface format for the swapchain
+ *
+ * @param[in] `formats` array of available formats to choose from
+ * @param[in] `count` the number of formats in the array
+ *
+ * @return the chosen `VkSurfaceFormatKHR`
+ */
+VkSurfaceFormatKHR pick_swapchain_format(const VkSurfaceFormatKHR *formats, const size_t count);
+
+/**
+ * Picks the 'best' present mode for the swapchain (aka `MAILBOX)`
+ * if `MAILBOX` is not present pick `FIFO`
+ *
+ * @param[in] `modes` array of available modes to choose from
+ * @param[in] `count` the number of modes in the array
+ *
+ * @return the chosen `VkPresentModeKHR`
+ */
+VkPresentModeKHR pick_swapchain_mode(const VkPresentModeKHR *modes, const size_t count);
+
+/**
+ * Picks the 'best' extend (surface area) for the swapchain
+ *
+ * @param[in] `caps` the capabilities the surface
+ * @param[in] `win` the glfw window of the application to retrive the desired dimensions for the extent
+ *
+ * @return the window 'pixel correct' extent if possible, else the maximum extent of the surface
+ */
+VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindow *win);
