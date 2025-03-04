@@ -60,6 +60,8 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 	create_swapchain(vri);
 	
 	create_image_views(vri);
+
+	create_pipeline(vri);
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
@@ -67,9 +69,15 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	detach_logger_callback(vri);
 #endif
 
+	destroy_pipeline(vri);
+
 	destroy_image_views(vri);
+
 	destroy_swapchain(vri);
+
 	destroy_logical_device(vri);
+
 	destroy_surface(vri);
+
 	destroy_instance(vri);
 }

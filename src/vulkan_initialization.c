@@ -410,3 +410,13 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 
 	return true;
 }
+
+bool create_pipeline(VulkanRuntimeInfo *vri) {
+
+
+
+}
+
+bool destroy_pipeline(VulkanRuntimeInfo *vri) {
+
+}

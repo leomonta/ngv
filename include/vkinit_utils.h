@@ -2,6 +2,14 @@
 
 #include "vulkan_initialization.h"
 
+typedef enum : char {
+	VERTEX_SHADER,
+	TESSELATION_SHADER,
+	GEOMETRY_SHADER,
+	FRAGMENT_SHADER,
+	COMPUTE_SHADER,
+} shaderKind;
+
 /**
  * Queries the queue capabilities of the device and returns the indicies of the available ones
  *
@@ -10,7 +18,8 @@
  *
  * @return `true` if the given device satisfies the defined extensions, `false`
  */
-QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
+QueueFamilyIndicies
+get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Checks if the give `VkPhysicalDevice` supports some required extension to render on screen (e.g. swapchain)
@@ -82,3 +91,25 @@ VkPresentModeKHR pick_swapchain_mode(const VkPresentModeKHR *modes, const size_t
  * @return the window 'pixel correct' extent if possible, else the maximum extent of the surface
  */
 VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindow *win);
+
+/**
+ * Reads the shader code from a file and compiles it with shaderc
+ * the returned string is heap mallocated, so it should be freed when no longer needed
+ *
+ * @param[in] `filename` the shader file location
+ * @param[in] `kind` the kind of shader to be compiled
+ *
+ * @return the compiled shader if successfull, nullptr otherwise
+ */
+const char *compile_shader_file(const char *filename, shaderKind kind);
+
+/**
+ * Compiles the shader given as input with shaderc
+ * the returned string is heap mallocated, so it should be freed when no longer needed
+ *
+ * @param[in] `code` the actual code of the shader
+ * @param[in] `kind` the kind of shader to be compiled
+ *
+ * @return the compiled shader if successfull, nullptr otherwise
+ */
+const char *compile_shader(const char *code, size_t size, shaderKind kind);

@@ -2,6 +2,9 @@
 
 #include "logger.h"
 
+#include <errno.h>
+#include <shaderc/shaderc.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -303,7 +306,7 @@ VkPresentModeKHR pick_swapchain_mode(const VkPresentModeKHR *modes, const size_t
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindow *win ) {
+VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindow *win) {
 	// if width or height is `0xffffffff` we have free reign on the swachain extent
 	// else we just use the maximum
 	if (caps->currentExtent.width != 0xffffffff) {
@@ -311,11 +314,78 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
 		llog(LOG_WARNING, "[Swapchain] Could not choose the preferred extent\n");
 	} else {
 		uint32_t width, height;
-		glfwGetFramebufferSize(win, (int*)(&width), (int*)(&height));
+		glfwGetFramebufferSize(win, (int *)(&width), (int *)(&height));
 
 		// the specification specifies that the `min` and `max` `ImageExtent`are not valid if the special value is present in `currentExtent`
 		// https://vulkan.lunarg.com/doc/view/latest/windows/apispec.html#VkSurfaceCapabilitiesKHR
 
 		return (VkExtent2D){width, height};
 	}
+}
+
+const char *compile_shader_file(const char *filename, shaderKind kind) {
+
+	errno         = 0;
+	FILE *sd_file = fopen(filename, "r");
+	if (sd_file == NULL || errno != 0) {
+		llog(LOG_ERROR, "[SHADER] Could not read the shader file '%s': %s\n", filename, strerror(errno));
+		fclose(sd_file);
+		return nullptr;
+	}
+
+	fseek(sd_file, 0, SEEK_END);
+	auto sz = (unsigned long)(ftell(sd_file));
+
+	char *code = malloc(sz);
+
+	fread(code, 1, sz, sd_file);
+
+	if (ferror(sd_file)) {
+		llog(LOG_ERROR, "[SHADER] Could read from file '%s': %s\n", filename);
+	}
+
+	return compile_shader(code, sz, kind);
+}
+
+const char *compile_shader(const char *code, size_t size, shaderKind kind) {
+
+	shaderc_shader_kind _kind = shaderc_vertex_shader;
+
+	switch (kind) {
+	case VERTEX_SHADER:
+		_kind = shaderc_vertex_shader;
+		break;
+
+	case TESSELATION_SHADER:
+		_kind = shaderc_tess_evaluation_shader;
+		break;
+
+	case GEOMETRY_SHADER:
+		_kind = shaderc_geometry_shader;
+		break;
+
+	case FRAGMENT_SHADER:
+		_kind = shaderc_fragment_shader;
+		break;
+
+	case COMPUTE_SHADER:
+		_kind = shaderc_compute_shader;
+		break;
+	}
+
+	auto compiler = shaderc_compiler_initialize();
+	auto c_res    = shaderc_compile_into_spv(compiler, code, size, _kind, "internal_compilation", "main", nullptr);
+
+	auto c_status = shaderc_result_get_compilation_status(c_res);
+
+	if (c_status != shaderc_compilation_status_success) {
+		llog(LOG_ERROR, "[SHADER] Could not compile shader: %s\n", shaderc_result_get_error_message(c_res));
+	}
+
+	auto res = shaderc_result_get_bytes(c_res);
+
+	shaderc_result_release(c_res);
+	shaderc_compiler_release(compiler);
+
+	return res;
 }

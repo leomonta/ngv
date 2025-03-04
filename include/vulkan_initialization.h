@@ -187,3 +187,21 @@ bool create_image_views(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_image_views(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates the shader pipeline
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_pipeline(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroy the shader pipeline
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_pipeline(VulkanRuntimeInfo *vri);
