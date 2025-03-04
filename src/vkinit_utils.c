@@ -329,7 +329,9 @@ const char *compile_shader_file(const char *filename, shaderKind kind) {
 	FILE *sd_file = fopen(filename, "r");
 	if (sd_file == NULL || errno != 0) {
 		llog(LOG_ERROR, "[SHADER] Could not read the shader file '%s': %s\n", filename, strerror(errno));
-		fclose(sd_file);
+		if (sd_file != NULL) {
+			fclose(sd_file);
+		}
 		return nullptr;
 	}
 
@@ -342,9 +344,18 @@ const char *compile_shader_file(const char *filename, shaderKind kind) {
 
 	if (ferror(sd_file)) {
 		llog(LOG_ERROR, "[SHADER] Could read from file '%s': %s\n", filename);
+		fclose(sd_file);
+		free(code);
+		return nullptr;
 	}
 
-	return compile_shader(code, sz, kind);
+	fclose(sd_file);
+
+	auto res = compile_shader(code, sz, kind);
+
+	free(code);
+
+	return res;
 }
 
 const char *compile_shader(const char *code, size_t size, shaderKind kind) {
