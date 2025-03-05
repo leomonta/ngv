@@ -1,7 +1,9 @@
 #include "vkinit_utils.h"
 
 #include "logger.h"
+#include "vulkan_initialization.h"
 
+#include <cstdint>
 #include <errno.h>
 #include <shaderc/shaderc.h>
 #include <stdio.h>
@@ -249,8 +251,8 @@ const char *VkResult_str(const VkResult res) {
 	};
 }
 
-swapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	swapchainDetails res = {0};
+SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	SwapchainDetails res = {0};
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &res.capabilities);
 
@@ -323,7 +325,7 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
 	}
 }
 
-const char *compile_shader_file(const char *filename, shaderKind kind) {
+bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo *result) {
 
 	errno         = 0;
 	FILE *sd_file = fopen(filename, "r");
@@ -332,7 +334,7 @@ const char *compile_shader_file(const char *filename, shaderKind kind) {
 		if (sd_file != NULL) {
 			fclose(sd_file);
 		}
-		return nullptr;
+		return false;
 	}
 
 	fseek(sd_file, 0, SEEK_END);
@@ -346,19 +348,19 @@ const char *compile_shader_file(const char *filename, shaderKind kind) {
 		llog(LOG_ERROR, "[SHADER] Could read from file '%s': %s\n", filename);
 		fclose(sd_file);
 		free(code);
-		return nullptr;
+		return false;
 	}
 
 	fclose(sd_file);
 
-	auto res = compile_shader(code, sz, kind);
+	auto res = compile_shader(code, sz, kind, result);
 
 	free(code);
 
 	return res;
 }
 
-const char *compile_shader(const char *code, size_t size, shaderKind kind) {
+bool compile_shader(const char *code, const size_t size, const ShaderKind kind, ShaderInfo *result) {
 
 	shaderc_shader_kind _kind = shaderc_vertex_shader;
 
@@ -391,12 +393,19 @@ const char *compile_shader(const char *code, size_t size, shaderKind kind) {
 
 	if (c_status != shaderc_compilation_status_success) {
 		llog(LOG_ERROR, "[SHADER] Could not compile shader: %s\n", shaderc_result_get_error_message(c_res));
+		return false;
 	}
 
-	auto res = shaderc_result_get_bytes(c_res);
+	result->kind   = kind;
+	result->result = c_res;
 
-	shaderc_result_release(c_res);
 	shaderc_compiler_release(compiler);
 
-	return res;
+	return true;
+}
+
+bool release_shader(shaderc_compilation_result_t res) {
+	shaderc_result_release(res);
+
+	return true;
 }

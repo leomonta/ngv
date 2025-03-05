@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <vulkan/vulkan_core.h>
 
 #ifdef RAW_PRINTS
 #	include <stdio.h>
@@ -364,6 +365,8 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 
 	free(vri->swapchain.buffers);
+	vri->swapchain.buffers       = nullptr;
+	vri->swapchain.buffers_count = 0;
 
 	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
 
@@ -407,16 +410,59 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 	}
 
 	free(vri->swapchain.views);
+	vri->swapchain.views = nullptr;
 
 	return true;
 }
 
 bool create_pipeline(VulkanRuntimeInfo *vri) {
 
+	vri->shaders.count = 2;
+	vri->shaders.shds  = malloc(sizeof(ShaderInfo) * vri->shaders.count);
+
+	if (compile_shader_file("shaders/main.vert", VERTEX_SHADER, &vri->shaders.shds[0])) {
+		VkShaderModuleCreateInfo sh_create = {0};
+		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		sh_create.codeSize                 = shaderc_result_get_length(vri->shaders.shds[0].result);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->shaders.shds[0].result));
+
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->shaders.shds[0].module);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
+		}
+	} else {
+		return false;
+	}
+
+	if (compile_shader_file("shaders/main.frag", FRAGMENT_SHADER, &vri->shaders.shds[1])) {
+		VkShaderModuleCreateInfo sh_create = {0};
+		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		sh_create.codeSize                 = shaderc_result_get_length(vri->shaders.shds[1].result);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->shaders.shds[1].result));
+
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->shaders.shds[1].module);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
+		}
+	} else {
+		return false;
+	}
 
 
+
+	return true;
 }
 
 bool destroy_pipeline(VulkanRuntimeInfo *vri) {
 
+	for (size_t i = 0; i < vri->shaders.count; ++i) {
+		vkDestroyShaderModule(vri->logical_dev, vri->shaders.shds[i].module, nullptr);
+		release_shader(vri->shaders.shds[i].result);
+	}
+
+	free(vri->shaders.shds);
+	vri->shaders.shds = nullptr;
+	vri->shaders.count = 0;
+
+	return true;
 }

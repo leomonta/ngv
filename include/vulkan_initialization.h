@@ -2,8 +2,11 @@
 
 #include "utils.h"
 
+#include <stddef.h>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
 typedef struct {
@@ -25,6 +28,14 @@ enum : char {
 	QUEUE_ENUM_COUNT,
 };
 
+typedef enum : char {
+	VERTEX_SHADER,
+	TESSELATION_SHADER,
+	GEOMETRY_SHADER,
+	FRAGMENT_SHADER,
+	COMPUTE_SHADER,
+} ShaderKind;
+
 typedef struct {
 	VkQueue graphics;
 	VkQueue compute;        // unused
@@ -45,6 +56,17 @@ typedef struct {
 } SwapchainInfo;
 
 typedef struct {
+	shaderc_compilation_result_t result;
+	VkShaderModule               module;
+	ShaderKind                   kind;
+} ShaderInfo;
+
+typedef struct {
+	ShaderInfo *shds;
+	size_t      count;
+} ShaderPipeline;
+
+typedef struct {
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
 	GLFWwindow              *sys_window;
@@ -53,6 +75,7 @@ typedef struct {
 	VkDevice                 logical_dev;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
+	ShaderPipeline           shaders;
 } VulkanRuntimeInfo;
 
 typedef struct {
@@ -61,7 +84,7 @@ typedef struct {
 	size_t                   formats_count;
 	VkPresentModeKHR        *modes;
 	size_t                   modes_count;
-} swapchainDetails;
+} SwapchainDetails;
 
 /**
  * returns if any requested validation layer is available

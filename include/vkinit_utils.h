@@ -2,13 +2,7 @@
 
 #include "vulkan_initialization.h"
 
-typedef enum : char {
-	VERTEX_SHADER,
-	TESSELATION_SHADER,
-	GEOMETRY_SHADER,
-	FRAGMENT_SHADER,
-	COMPUTE_SHADER,
-} shaderKind;
+#include <shaderc/shaderc.h>
 
 /**
  * Queries the queue capabilities of the device and returns the indicies of the available ones
@@ -59,7 +53,7 @@ const char *VkResult_str(const VkResult res);
  *
  * @return a `swapchain` details struct
  */
-swapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface);
+SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Picks the 'best' surface format for the swapchain
@@ -101,7 +95,7 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
  *
  * @return the compiled shader if successfull, nullptr otherwise
  */
-const char *compile_shader_file(const char *filename, shaderKind kind);
+bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo *result);
 
 /**
  * Compiles the shader given as input with shaderc
@@ -112,4 +106,14 @@ const char *compile_shader_file(const char *filename, shaderKind kind);
  *
  * @return the compiled shader if successfull, nullptr otherwise
  */
-const char *compile_shader(const char *code, size_t size, shaderKind kind);
+bool compile_shader(const char *code, const size_t size, const ShaderKind kind, ShaderInfo *result);
+
+/**
+ * Releases the data stored in the `shaderc_compilation_result_t`
+ *
+ * @param[in] `res` the result to release
+ *
+ * #return if the operation was successfull
+ */
+bool release_shader(shaderc_compilation_result_t res);
+
