@@ -3,7 +3,6 @@
 #include "logger.h"
 #include "vulkan_initialization.h"
 
-#include <cstdint>
 #include <errno.h>
 #include <shaderc/shaderc.h>
 #include <stdio.h>

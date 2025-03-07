@@ -62,8 +62,9 @@ typedef struct {
 } ShaderInfo;
 
 typedef struct {
-	ShaderInfo *shds;
-	size_t      count;
+	VkPipelineLayout layout;
+	ShaderInfo      *shds;
+	size_t           count;
 } ShaderPipeline;
 
 typedef struct {
@@ -75,7 +76,7 @@ typedef struct {
 	VkDevice                 logical_dev;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
-	ShaderPipeline           shaders;
+	ShaderPipeline           pipeline;
 } VulkanRuntimeInfo;
 
 typedef struct {
@@ -228,3 +229,22 @@ bool create_pipeline(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_pipeline(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates the graphics pipleline with all of its stages
+ * shaders, vertexes layout, uniforms...
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_renderpass(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the pipeline and releases the compiles shaders 
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_renderpass(VulkanRuntimeInfo *vri);

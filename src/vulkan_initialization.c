@@ -13,10 +13,12 @@
 #	include <stdio.h>
 #endif
 
-const char    *PHYSICAL_EXTENSIONS[]    = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-const unsigned PHYSICAL_EXTENSION_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(char *);
-const char    *VALIDATION_LAYERS[]      = {"VK_LAYER_KHRONOS_validation"};
-const unsigned VALIDATION_LAYERS_COUNT  = sizeof(VALIDATION_LAYERS) / sizeof(char *);
+const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+constexpr unsigned       PHYSICAL_EXTENSIONS_COUNT    = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
+const char              *VALIDATION_LAYERS[]          = {"VK_LAYER_KHRONOS_validation"};
+constexpr unsigned       VALIDATION_LAYERS_COUNT      = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
+constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
+constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
 
 bool check_validation_layer_support() {
 
@@ -197,7 +199,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 
 	auto indices = get_queue_families(vri->physical_dev, vri->surface);
 
-	// if bot GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
+	// if both GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
 	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) {
 		return false;
 	}
@@ -245,7 +247,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	dev_create.queueCreateInfoCount    = num_unique_queues;
 	dev_create.pEnabledFeatures        = &dev_features;
 	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
-	dev_create.enabledExtensionCount   = 1;
+	dev_create.enabledExtensionCount   = PHYSICAL_EXTENSIONS_COUNT;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
@@ -417,16 +419,16 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 
 bool create_pipeline(VulkanRuntimeInfo *vri) {
 
-	vri->shaders.count = 2;
-	vri->shaders.shds  = malloc(sizeof(ShaderInfo) * vri->shaders.count);
+	vri->pipeline.count = 2;
+	vri->pipeline.shds  = malloc(sizeof(ShaderInfo) * vri->pipeline.count);
 
-	if (compile_shader_file("shaders/main.vert", VERTEX_SHADER, &vri->shaders.shds[0])) {
+	if (compile_shader_file("shaders/main.vert", VERTEX_SHADER, &vri->pipeline.shds[0])) {
 		VkShaderModuleCreateInfo sh_create = {0};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		sh_create.codeSize                 = shaderc_result_get_length(vri->shaders.shds[0].result);
-		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->shaders.shds[0].result));
+		sh_create.codeSize                 = shaderc_result_get_length(vri->pipeline.shds[0].result);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->pipeline.shds[0].result));
 
-		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->shaders.shds[0].module);
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->pipeline.shds[0].module);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
 		}
@@ -434,13 +436,13 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	if (compile_shader_file("shaders/main.frag", FRAGMENT_SHADER, &vri->shaders.shds[1])) {
+	if (compile_shader_file("shaders/main.frag", FRAGMENT_SHADER, &vri->pipeline.shds[1])) {
 		VkShaderModuleCreateInfo sh_create = {0};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		sh_create.codeSize                 = shaderc_result_get_length(vri->shaders.shds[1].result);
-		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->shaders.shds[1].result));
+		sh_create.codeSize                 = shaderc_result_get_length(vri->pipeline.shds[1].result);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->pipeline.shds[1].result));
 
-		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->shaders.shds[1].module);
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->pipeline.shds[1].module);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
 		}
@@ -448,21 +450,108 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	// VkPipelineShaderStageCreateInfo sh_stages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+	VkPipelineDynamicStateCreateInfo dn_create = {0};
+	dn_create.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dn_create.dynamicStateCount                = PIPELINE_DYNAMIC_STATE_COUNT;
+	dn_create.pDynamicStates                   = PIPELINE_DYNAMIC_STATE;
+
+	// TODO: set the correct layout
+	// maybe ask for some kind of struct to base the layout to
+	VkPipelineVertexInputStateCreateInfo vl_create = {0};
+	vl_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vl_create.vertexBindingDescriptionCount        = 0;
+	vl_create.pVertexBindingDescriptions           = nullptr; // Optional
+	vl_create.vertexAttributeDescriptionCount      = 0;
+	vl_create.pVertexAttributeDescriptions         = nullptr; // Optional
+
+	// TODO: make this changeable for the user
+	VkPipelineInputAssemblyStateCreateInfo ia_create = {0};
+	ia_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	ia_create.topology                               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	ia_create.primitiveRestartEnable                 = VK_FALSE;
+
+	VkPipelineViewportStateCreateInfo vp_create = {0};
+	vp_create.sType                             = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	vp_create.viewportCount                     = 1;
+	vp_create.scissorCount                      = 1;
+
+	VkPipelineRasterizationStateCreateInfo rt_create = {0};
+	rt_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rt_create.depthClampEnable                       = VK_FALSE;
+	rt_create.rasterizerDiscardEnable                = VK_FALSE;
+	rt_create.polygonMode                            = VK_POLYGON_MODE_FILL; // TODO: settable wireframe here
+	rt_create.lineWidth                              = 1.0f;
+	rt_create.cullMode                               = VK_CULL_MODE_BACK_BIT;
+	rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
+	rt_create.depthBiasEnable                        = VK_FALSE;
+
+	// TODO: This should probably be enabled
+	VkPipelineMultisampleStateCreateInfo ms_create = {0};
+	ms_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	ms_create.sampleShadingEnable                  = VK_FALSE;
+	ms_create.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
+	ms_create.minSampleShading                     = 1.0f;     // Optional
+	ms_create.pSampleMask                          = nullptr;  // Optional
+	ms_create.alphaToCoverageEnable                = VK_FALSE; // Optional
+	ms_create.alphaToOneEnable                     = VK_FALSE; // Optional
+
+	VkPipelineColorBlendAttachmentState cb_attachment = {0};
+	cb_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	cb_attachment.blendEnable                         = VK_FALSE;
+	cb_attachment.blendEnable                         = VK_TRUE;
+	cb_attachment.srcColorBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
+	cb_attachment.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	cb_attachment.colorBlendOp                        = VK_BLEND_OP_ADD;
+	cb_attachment.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE;
+	cb_attachment.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
+	cb_attachment.alphaBlendOp                        = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo cb_create = {0};
+	cb_create.sType                               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	cb_create.logicOpEnable                       = VK_FALSE;
+	cb_create.attachmentCount                     = 1;
+	cb_create.pAttachments                        = &cb_attachment;
+
+	// TODO: setup uniforms
+	VkPipelineLayoutCreateInfo pl_layout = {0};
+	pl_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pl_layout.setLayoutCount             = 0;       // Optional
+	pl_layout.pSetLayouts                = nullptr; // Optional
+	pl_layout.pushConstantRangeCount     = 0;       // Optional
+	pl_layout.pPushConstantRanges        = nullptr; // Optional
+
+	auto res = vkCreatePipelineLayout(vri->logical_dev, &pl_layout, nullptr, &vri->pipeline.layout);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPLINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
+	}
 
 	return true;
 }
 
 bool destroy_pipeline(VulkanRuntimeInfo *vri) {
+	vkDestroyPipelineLayout(vri->logical_dev, vri->pipeline.layout, nullptr);
 
-	for (size_t i = 0; i < vri->shaders.count; ++i) {
-		vkDestroyShaderModule(vri->logical_dev, vri->shaders.shds[i].module, nullptr);
-		release_shader(vri->shaders.shds[i].result);
+	for (size_t i = 0; i < vri->pipeline.count; ++i) {
+		vkDestroyShaderModule(vri->logical_dev, vri->pipeline.shds[i].module, nullptr);
+		release_shader(vri->pipeline.shds[i].result);
 	}
 
-	free(vri->shaders.shds);
-	vri->shaders.shds = nullptr;
-	vri->shaders.count = 0;
+	free(vri->pipeline.shds);
+	vri->pipeline.shds  = nullptr;
+	vri->pipeline.count = 0;
+
+	return true;
+}
+
+bool create_renderpass(VulkanRuntimeInfo *vri) {
+
+	return true;
+}
+
+bool destroy_renderpass(VulkanRuntimeInfo *vri) {
 
 	return true;
 }

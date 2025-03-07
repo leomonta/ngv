@@ -61,6 +61,8 @@ void init_vulkan(VulkanRuntimeInfo *vri) {
 	
 	create_image_views(vri);
 
+	create_renderpass(vri);
+
 	create_pipeline(vri);
 }
 
@@ -70,6 +72,8 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 #endif
 
 	destroy_pipeline(vri);
+
+	destroy_renderpass(vri);
 
 	destroy_image_views(vri);
 
