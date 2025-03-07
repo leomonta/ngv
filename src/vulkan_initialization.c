@@ -419,16 +419,16 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 
 bool create_pipeline(VulkanRuntimeInfo *vri) {
 
-	vri->pipeline.count = 2;
-	vri->pipeline.shds  = malloc(sizeof(ShaderInfo) * vri->pipeline.count);
+	shaderc_compilation_result_t vert_res;
+	VkShaderModule               vert_module = {0};
 
-	if (compile_shader_file("shaders/main.vert", VERTEX_SHADER, &vri->pipeline.shds[0])) {
+	if (compile_shader_file("../shaders/main.vert", VERTEX_SHADER, &vert_res)) {
 		VkShaderModuleCreateInfo sh_create = {0};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		sh_create.codeSize                 = shaderc_result_get_length(vri->pipeline.shds[0].result);
-		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->pipeline.shds[0].result));
+		sh_create.codeSize                 = shaderc_result_get_length(vert_res);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vert_res));
 
-		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->pipeline.shds[0].module);
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vert_module);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
 		}
@@ -436,13 +436,16 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	if (compile_shader_file("shaders/main.frag", FRAGMENT_SHADER, &vri->pipeline.shds[1])) {
+	shaderc_compilation_result_t frag_res;
+	VkShaderModule               frag_module = {0};
+
+	if (compile_shader_file("../shaders/main.frag", FRAGMENT_SHADER, &frag_res)) {
 		VkShaderModuleCreateInfo sh_create = {0};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		sh_create.codeSize                 = shaderc_result_get_length(vri->pipeline.shds[1].result);
-		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vri->pipeline.shds[1].result));
+		sh_create.codeSize                 = shaderc_result_get_length(frag_res);
+		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(frag_res));
 
-		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &vri->pipeline.shds[1].module);
+		auto res = vkCreateShaderModule(vri->logical_dev, &sh_create, nullptr, &frag_module);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SHADER] Could not create vulkan shader moldule: %s\n", VkResult_str(res));
 		}
@@ -450,7 +453,19 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	// VkPipelineShaderStageCreateInfo sh_stages[] = {vertShaderStageInfo, fragShaderStageInfo};
+	VkPipelineShaderStageCreateInfo vert_stage_create = {0};
+	vert_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vert_stage_create.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
+	vert_stage_create.module                          = vert_module;
+	vert_stage_create.pName                           = "main";
+
+	VkPipelineShaderStageCreateInfo frag_stage_create = {0};
+	frag_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	frag_stage_create.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
+	frag_stage_create.module                          = frag_module;
+	frag_stage_create.pName                           = "main";
+
+	VkPipelineShaderStageCreateInfo sh_stages[] = {vert_stage_create, frag_stage_create};
 
 	VkPipelineDynamicStateCreateInfo dn_create = {0};
 	dn_create.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -525,33 +540,85 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	auto res = vkCreatePipelineLayout(vri->logical_dev, &pl_layout, nullptr, &vri->pipeline.layout);
 
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[PIPLINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
+		return false;
 	}
+
+	VkGraphicsPipelineCreateInfo pl_create = {0};
+	pl_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pl_create.stageCount                   = 2;
+	pl_create.pStages                      = sh_stages;
+	pl_create.pVertexInputState            = &vl_create;
+	pl_create.pInputAssemblyState          = &ia_create;
+	pl_create.pViewportState               = &vp_create;
+	pl_create.pRasterizationState          = &rt_create;
+	pl_create.pMultisampleState            = &ms_create;
+	pl_create.pDepthStencilState           = nullptr; // Optional
+	pl_create.pColorBlendState             = &cb_create;
+	pl_create.pDynamicState                = &dn_create;
+	pl_create.layout                       = vri->pipeline.layout;
+	pl_create.renderPass                   = vri->render_pass;
+	pl_create.subpass                      = 0;
+
+	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.pipeline);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	vkDestroyShaderModule(vri->logical_dev, vert_module, nullptr);
+	release_shader(vert_res);
+	vkDestroyShaderModule(vri->logical_dev, frag_module, nullptr);
+	release_shader(frag_res);
 
 	return true;
 }
 
 bool destroy_pipeline(VulkanRuntimeInfo *vri) {
+	vkDestroyPipeline(vri->logical_dev, vri->pipeline.pipeline, nullptr);
 	vkDestroyPipelineLayout(vri->logical_dev, vri->pipeline.layout, nullptr);
-
-	for (size_t i = 0; i < vri->pipeline.count; ++i) {
-		vkDestroyShaderModule(vri->logical_dev, vri->pipeline.shds[i].module, nullptr);
-		release_shader(vri->pipeline.shds[i].result);
-	}
-
-	free(vri->pipeline.shds);
-	vri->pipeline.shds  = nullptr;
-	vri->pipeline.count = 0;
 
 	return true;
 }
 
 bool create_renderpass(VulkanRuntimeInfo *vri) {
+	VkAttachmentDescription cl_attachment = {0};
+	cl_attachment.format                  = vri->swapchain.format;
+	cl_attachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
+	cl_attachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	cl_attachment.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+	cl_attachment.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	cl_attachment.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	cl_attachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+	cl_attachment.finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+	VkAttachmentReference cl_ref = {0};
+	cl_ref.attachment            = 0;
+	cl_ref.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {0};
+	subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments    = &cl_ref;
+
+	VkRenderPassCreateInfo rp_create = {0};
+	rp_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	rp_create.attachmentCount        = 1;
+	rp_create.pAttachments           = &cl_attachment;
+	rp_create.subpassCount           = 1;
+	rp_create.pSubpasses             = &subpass;
+
+	auto res = vkCreateRenderPass(vri->logical_dev, &rp_create, nullptr, &vri->render_pass);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[RENDERPASS] Could not create the render pass: %s\n", VkResult_str(res));
+	}
 	return true;
 }
 
 bool destroy_renderpass(VulkanRuntimeInfo *vri) {
+
+	vkDestroyRenderPass(vri->logical_dev, vri->render_pass, nullptr);
 
 	return true;
 }

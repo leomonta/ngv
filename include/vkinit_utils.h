@@ -95,7 +95,7 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
  *
  * @return the compiled shader if successfull, nullptr otherwise
  */
-bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo *result);
+bool compile_shader_file(const char *filename, const ShaderKind kind, shaderc_compilation_result_t *result);
 
 /**
  * Compiles the shader given as input with shaderc
@@ -106,7 +106,7 @@ bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo
  *
  * @return the compiled shader if successfull, nullptr otherwise
  */
-bool compile_shader(const char *code, const size_t size, const ShaderKind kind, ShaderInfo *result);
+bool compile_shader(const char *code, const size_t size, const ShaderKind kind, shaderc_compilation_result_t *result);
 
 /**
  * Releases the data stored in the `shaderc_compilation_result_t`

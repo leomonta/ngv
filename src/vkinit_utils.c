@@ -324,7 +324,7 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
 	}
 }
 
-bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo *result) {
+bool compile_shader_file(const char *filename, const ShaderKind kind, shaderc_compilation_result_t *result) {
 
 	errno         = 0;
 	FILE *sd_file = fopen(filename, "r");
@@ -341,10 +341,11 @@ bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo
 
 	char *code = malloc(sz);
 
+	fseek(sd_file, 0, SEEK_SET);
 	fread(code, 1, sz, sd_file);
 
 	if (ferror(sd_file)) {
-		llog(LOG_ERROR, "[SHADER] Could read from file '%s': %s\n", filename);
+		llog(LOG_ERROR, "[SHADER] Could read from file '%s'\n", filename);
 		fclose(sd_file);
 		free(code);
 		return false;
@@ -359,7 +360,7 @@ bool compile_shader_file(const char *filename, const ShaderKind kind, ShaderInfo
 	return res;
 }
 
-bool compile_shader(const char *code, const size_t size, const ShaderKind kind, ShaderInfo *result) {
+bool compile_shader(const char *code, const size_t size, const ShaderKind kind, shaderc_compilation_result_t *result) {
 
 	shaderc_shader_kind _kind = shaderc_vertex_shader;
 
@@ -386,17 +387,14 @@ bool compile_shader(const char *code, const size_t size, const ShaderKind kind, 
 	}
 
 	auto compiler = shaderc_compiler_initialize();
-	auto c_res    = shaderc_compile_into_spv(compiler, code, size, _kind, "internal_compilation", "main", nullptr);
+	*result       = shaderc_compile_into_spv(compiler, code, size, _kind, "internal_compilation", "main", nullptr);
 
-	auto c_status = shaderc_result_get_compilation_status(c_res);
+	auto c_status = shaderc_result_get_compilation_status(*result);
 
 	if (c_status != shaderc_compilation_status_success) {
-		llog(LOG_ERROR, "[SHADER] Could not compile shader: %s\n", shaderc_result_get_error_message(c_res));
+		llog(LOG_ERROR, "[SHADER] Could not compile shader: %s\n", shaderc_result_get_error_message(*result));
 		return false;
 	}
-
-	result->kind   = kind;
-	result->result = c_res;
 
 	shaderc_compiler_release(compiler);
 

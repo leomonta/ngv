@@ -56,15 +56,8 @@ typedef struct {
 } SwapchainInfo;
 
 typedef struct {
-	shaderc_compilation_result_t result;
-	VkShaderModule               module;
-	ShaderKind                   kind;
-} ShaderInfo;
-
-typedef struct {
 	VkPipelineLayout layout;
-	ShaderInfo      *shds;
-	size_t           count;
+	VkPipeline       pipeline;
 } ShaderPipeline;
 
 typedef struct {
@@ -74,6 +67,7 @@ typedef struct {
 	VkSurfaceKHR             surface;
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
+	VkRenderPass             render_pass;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
@@ -241,7 +235,7 @@ bool destroy_pipeline(VulkanRuntimeInfo *vri);
 bool create_renderpass(VulkanRuntimeInfo *vri);
 
 /**
- * Destroys the pipeline and releases the compiles shaders 
+ * Destroys the pipeline and releases the compiles shaders
  *
  * @param[in] `vri` the vulkan context to use
  *
