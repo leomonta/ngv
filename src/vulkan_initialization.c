@@ -557,7 +557,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	pl_create.pColorBlendState             = &cb_create;
 	pl_create.pDynamicState                = &dn_create;
 	pl_create.layout                       = vri->pipeline.layout;
-	pl_create.renderPass                   = vri->render_pass;
+	pl_create.renderPass                   = vri->renderpass;
 	pl_create.subpass                      = 0;
 
 	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.pipeline);
@@ -609,7 +609,7 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 	rp_create.subpassCount           = 1;
 	rp_create.pSubpasses             = &subpass;
 
-	auto res = vkCreateRenderPass(vri->logical_dev, &rp_create, nullptr, &vri->render_pass);
+	auto res = vkCreateRenderPass(vri->logical_dev, &rp_create, nullptr, &vri->renderpass);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[RENDERPASS] Could not create the render pass: %s\n", VkResult_str(res));
 	}
@@ -618,7 +618,42 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 
 bool destroy_renderpass(VulkanRuntimeInfo *vri) {
 
-	vkDestroyRenderPass(vri->logical_dev, vri->render_pass, nullptr);
+	vkDestroyRenderPass(vri->logical_dev, vri->renderpass, nullptr);
 
+	return true;
+}
+
+bool create_framebuffers(VulkanRuntimeInfo *vri) {
+
+	vri->swapchain.framebuffers = malloc(sizeof(VkFramebuffer) * vri->swapchain.buffers_count);
+
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+		VkImageView attachments[] = {
+		    vri->swapchain.views[i]};
+
+		VkFramebufferCreateInfo fb_create = {0};
+		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		fb_create.renderPass              = vri->renderpass;
+		fb_create.attachmentCount         = 1;
+		fb_create.pAttachments            = attachments;
+		fb_create.width                   = vri->swapchain.extent.width;
+		fb_create.height                  = vri->swapchain.extent.height;
+		fb_create.layers                  = 1;
+
+		auto res = vkCreateFramebuffer(vri->logical_dev, &fb_create, nullptr, &vri->swapchain.framebuffers[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[FRAMBUFFER] Could not create a frambuffer: %s\n", VkResult_str(res));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool destroy_framebuffers(VulkanRuntimeInfo *vri) {
+
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+		vkDestroyFramebuffer(vri->logical_dev, vri->swapchain.framebuffers[i], nullptr);
+	}
 	return true;
 }

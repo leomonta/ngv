@@ -51,6 +51,7 @@ typedef struct {
 	size_t         buffers_count;
 	VkImage       *buffers;
 	VkImageView   *views;
+	VkFramebuffer *framebuffers;
 	VkExtent2D     extent;
 	VkFormat       format;
 } SwapchainInfo;
@@ -61,13 +62,13 @@ typedef struct {
 } ShaderPipeline;
 
 typedef struct {
+	GLFWwindow              *sys_window;
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
-	GLFWwindow              *sys_window;
 	VkSurfaceKHR             surface;
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
-	VkRenderPass             render_pass;
+	VkRenderPass             renderpass;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
@@ -242,3 +243,20 @@ bool create_renderpass(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_renderpass(VulkanRuntimeInfo *vri);
+
+/**
+ * Create the framebuffers
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_framebuffers(VulkanRuntimeInfo *vri);
+
+/**
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_framebuffers(VulkanRuntimeInfo *vri);
