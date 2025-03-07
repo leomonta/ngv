@@ -1,5 +1,11 @@
 #include "utils.h"
 
+#include "logger.h"
+
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
 bool at_bit(const bitfield bf, const unsigned char i) {
 
 	if (i >= (sizeof(bf) * 8)) {

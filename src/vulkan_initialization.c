@@ -2,8 +2,10 @@
 
 #include "config.h"
 #include "logger.h"
+#include "utils.h"
 #include "vkinit_utils.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -15,59 +17,8 @@
 
 const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 constexpr unsigned       PHYSICAL_EXTENSIONS_COUNT    = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
-const char              *VALIDATION_LAYERS[]          = {"VK_LAYER_KHRONOS_validation"};
-constexpr unsigned       VALIDATION_LAYERS_COUNT      = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
 constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
 constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
-
-bool check_validation_layer_support() {
-
-	uint32_t extension_count = 0;
-	vkEnumerateInstanceLayerProperties(&extension_count, nullptr);
-
-	VkLayerProperties *props = (VkLayerProperties *)(malloc(sizeof(VkLayerProperties) * extension_count));
-
-	vkEnumerateInstanceLayerProperties(&extension_count, props);
-
-	for (unsigned i = 0; i < VALIDATION_LAYERS_COUNT; ++i) {
-
-		for (unsigned j = 0; j < extension_count; ++j) {
-			if (strcmp(VALIDATION_LAYERS[i], props[j].layerName) == 0) {
-				llog(LOG_INFO, "Validation layer found\n");
-				free(props);
-				return true;
-			}
-		}
-	}
-
-	free(props);
-
-	return false;
-}
-
-/**
- * Queries glfw about the required extensions for Vulkan and returns a **mallocated array that needs to be manually freed**
- */
-const char **get_required_extensions(uint32_t *count) {
-
-	// get vulkan extensions from glfw
-	const char **glfw_exts;
-
-	glfw_exts = glfwGetRequiredInstanceExtensions(count);
-
-#ifdef USE_VALIDATION_LAYERS
-	++(*count);
-#endif
-
-	auto exts = (const char **)malloc(*count * sizeof(char *));
-	memcpy(exts, glfw_exts, *count * sizeof(const char *));
-
-#ifdef USE_VALIDATION_LAYERS
-	exts[*count - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-#endif
-
-	return exts;
-}
 
 bool create_instance(VulkanRuntimeInfo *vri) {
 
@@ -92,10 +43,11 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
 	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
+	TEST_MALLOC(ext_props)
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
 
 #ifdef RAW_PRINTS
-	llog(LOG_DEBUG, "Available instance extensions:\n");
+	llog(LOG_DEBUG, "[INSTANCE] Available instance extensions:\n");
 
 	for (unsigned i = 0; i < extension_count; ++i) {
 		printf("\t%s\n", ext_props[i].extensionName);
@@ -111,7 +63,10 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	createInfo.enabledLayerCount = 0;
 #endif
 
-	auto exts                          = get_required_extensions(&createInfo.enabledExtensionCount);
+	auto exts = get_required_extensions(&createInfo.enabledExtensionCount);
+	if (exts == nullptr) {
+		return false;
+	}
 	createInfo.ppEnabledExtensionNames = exts;
 
 	auto result = vkCreateInstance(&createInfo, nullptr, &vri->instance);
@@ -119,9 +74,11 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	free(exts);
 
 	if (result != VK_SUCCESS) {
-		llog(LOG_FATAL, "Could not create vulkan instance: %s\n", VkResult_str(result));
+		llog(LOG_FATAL, "[INSTANCE] Could not create vulkan instance: %s\n", VkResult_str(result));
 		return false;
 	}
+
+	llog(LOG_DEBUG, "[INSTANCE] Vulkan instance successfully created\n");
 	return true;
 }
 
@@ -144,15 +101,17 @@ bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkCreateDebugUtilsMessengerEXT");
 
 	if (func == nullptr) {
-		llog(LOG_ERROR, "Could not get the debug callback creation function\n");
+		llog(LOG_ERROR, "[DEBUG] Could not get the debug callback creation function\n");
 		return false;
 	}
 	auto res = func(vri->instance, &db_create, nullptr, &vri->debug_logger);
 
 	if (res != VK_SUCCESS) {
-		llog(LOG_ERROR, "The debug callback creation function returned %s, could not create the debug callback\n", VkResult_str(res));
+		llog(LOG_ERROR, "[DEBUG] Could not create the debugger callback: %s\n", VkResult_str(res));
 		return false;
 	}
+
+	llog(LOG_DEBUG, "[DEBUG] Debug callback successfully attached\n");
 
 	return true;
 }
@@ -161,11 +120,13 @@ bool detach_logger_callback(VulkanRuntimeInfo *vri) {
 
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vri->instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func == nullptr) {
-		llog(LOG_ERROR, "Could not get the debug destruction function\n");
+		llog(LOG_ERROR, "[DEBUG] Could not get the debug destruction function\n");
 		return false;
 	}
 
 	func(vri->instance, vri->debug_logger, nullptr);
+
+	llog(LOG_DEBUG, "[DEBUG] Debug callback successfully detached\n");
 
 	return true;
 }
@@ -176,21 +137,25 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	vkEnumeratePhysicalDevices(vri->instance, &count, nullptr);
 
 	if (count <= 0) {
-		llog(LOG_ERROR, "Could not enumerate physical devices\n");
+		llog(LOG_ERROR, "[PHYSICAL DEV] Could not enumerate physical devices\n");
 		return false;
 	}
 
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
+	TEST_MALLOC(devs)
+
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
 	auto best_dev = pick_best_device(devs, count, vri->surface);
 	if (best_dev == VK_NULL_HANDLE) {
-		llog(LOG_FATAL, "Could not find a suitable physical device\n");
+		llog(LOG_FATAL, "[PHYSICAL DEVICE] Could not find a suitable physical device\n");
 		return false;
 	}
 	vri->physical_dev = best_dev;
 
 	free(devs);
+
+	llog(LOG_DEBUG, "[PHYSICAL DEVICE] Physical device successfully created\n");
 
 	return true;
 }
@@ -201,6 +166,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 
 	// if both GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
 	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) {
+		llog(LOG_ERROR, "[LOGICAL DEVICE] Could not satisfy the required queues necessary\n");
 		return false;
 	}
 
@@ -215,7 +181,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 
 	// check if there is a duplice index
 	// if so replace it with the one at the end and consider the array 1 element smaller
-	// FIXME: this will bite me in the ass in the future
+	// FIXME: this will bite me in the ass in the future, I've definitely made a mistake
 	for (uint32_t i = 0; i < num_unique_queues; ++i) {
 		for (uint32_t j = 0; j < i; ++j) {
 			// duplicate
@@ -240,14 +206,13 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	}
 
 	VkPhysicalDeviceFeatures dev_features = {0};
-	VkDeviceCreateInfo       dev_create;
-	dev_create.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-	dev_create.pQueueCreateInfos       = q_create;
-	dev_create.queueCreateInfoCount    = num_unique_queues;
-	dev_create.pEnabledFeatures        = &dev_features;
-	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
-	dev_create.enabledExtensionCount   = PHYSICAL_EXTENSIONS_COUNT;
+	VkDeviceCreateInfo       dev_create   = {0};
+	dev_create.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	dev_create.pQueueCreateInfos          = q_create;
+	dev_create.queueCreateInfoCount       = num_unique_queues;
+	dev_create.pEnabledFeatures           = &dev_features;
+	dev_create.ppEnabledExtensionNames    = PHYSICAL_EXTENSIONS;
+	dev_create.enabledExtensionCount      = PHYSICAL_EXTENSIONS_COUNT;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
@@ -258,15 +223,17 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 
 	auto res = vkCreateDevice(vri->physical_dev, &dev_create, nullptr, &vri->logical_dev);
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "Could not create the Vulkan Logical device: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[LOGICAL DEVICE] Could not create the Vulkan Logical device: %s\n", VkResult_str(res));
 		return false;
 	}
 
 	vkGetDeviceQueue(vri->logical_dev, indices.graphics, 0, &vri->device_queues.graphics);
 	vkGetDeviceQueue(vri->logical_dev, indices.present, 0, &vri->device_queues.present);
-	// vkGetDeviceQueue(vri->logical_dev, indices.compure, 0, &vri->device_queues.compure);
+	// vkGetDeviceQueue(vri->logical_dev, indices.compute, 0, &vri->device_queues.compure);
 	// vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
 	// vkGetDeviceQueue(vri->logical_dev, indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
+
+	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully created\n");
 
 	return true;
 }
@@ -282,9 +249,11 @@ bool create_surface(VulkanRuntimeInfo *vri) {
 
 	auto res = glfwCreateWindowSurface(vri->instance, vri->sys_window, nullptr, &vri->surface);
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "Could not create the Vulkan Surface: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[SURFACE] Could not create the Vulkan Surface: %s\n", VkResult_str(res));
 		return false;
 	}
+
+	llog(LOG_DEBUG, "[DEBUG] Surface successfully created\n");
 
 	return true;
 }
@@ -343,9 +312,8 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	auto res = vkCreateSwapchainKHR(vri->logical_dev, &sc_create, nullptr, &sc);
 
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[Swapchain] Could no create the Swapchain: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[SWAPCHAIN] Could not create the Swapchain: %s\n", VkResult_str(res));
 		return false;
-		;
 	}
 
 	vri->swapchain.swapchain = sc;
@@ -359,7 +327,10 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
 	vri->swapchain.buffers = malloc(sizeof(VkImage) * count);
+	TEST_MALLOC(vri->swapchain.buffers);
 	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, vri->swapchain.buffers);
+
+	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully created\n");
 
 	return true;
 }
@@ -378,6 +349,7 @@ bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 bool create_image_views(VulkanRuntimeInfo *vri) {
 
 	vri->swapchain.views = malloc(sizeof(VkImageView) * vri->swapchain.buffers_count);
+	TEST_MALLOC(vri->swapchain.views);
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
 
@@ -398,10 +370,12 @@ bool create_image_views(VulkanRuntimeInfo *vri) {
 
 		auto res = vkCreateImageView(vri->logical_dev, &vw_create, nullptr, &vri->swapchain.views[i]);
 		if (res != VK_SUCCESS) {
-			llog(LOG_FATAL, "[Swapchain] Could not create image views: %s\n", VkResult_str(res));
+			llog(LOG_FATAL, "[SWAPCHAIN] Could not create image views: %s\n", VkResult_str(res));
 			return false;
 		}
 	}
+
+	llog(LOG_DEBUG, "[SWAPCHAIN] Image views successfully created\n");
 
 	return true;
 }
@@ -544,6 +518,8 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	llog(LOG_DEBUG, "[PIPELINE] Pipeline layout successfully crated\n");
+
 	VkGraphicsPipelineCreateInfo pl_create = {0};
 	pl_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pl_create.stageCount                   = 2;
@@ -571,6 +547,8 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	release_shader(vert_res);
 	vkDestroyShaderModule(vri->logical_dev, frag_module, nullptr);
 	release_shader(frag_res);
+
+	llog(LOG_DEBUG, "[PIPELINE] Graphics pipeline successfully crated\n");
 
 	return true;
 }
@@ -613,6 +591,8 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[RENDERPASS] Could not create the render pass: %s\n", VkResult_str(res));
 	}
+
+	llog(LOG_DEBUG, "[RENDERPASS] Renderpass successfully created\n");
 	return true;
 }
 
@@ -626,6 +606,7 @@ bool destroy_renderpass(VulkanRuntimeInfo *vri) {
 bool create_framebuffers(VulkanRuntimeInfo *vri) {
 
 	vri->swapchain.framebuffers = malloc(sizeof(VkFramebuffer) * vri->swapchain.buffers_count);
+	TEST_MALLOC(vri->swapchain.framebuffers)
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
 		VkImageView attachments[] = {
@@ -647,6 +628,8 @@ bool create_framebuffers(VulkanRuntimeInfo *vri) {
 		}
 	}
 
+	llog(LOG_DEBUG, "[FRAMBUFFER] frambuffers successfully created\n");
+
 	return true;
 }
 
@@ -655,5 +638,7 @@ bool destroy_framebuffers(VulkanRuntimeInfo *vri) {
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
 		vkDestroyFramebuffer(vri->logical_dev, vri->swapchain.framebuffers[i], nullptr);
 	}
+	free(vri->swapchain.framebuffers);
+	vri->swapchain.framebuffers = nullptr;
 	return true;
 }

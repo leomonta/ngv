@@ -33,43 +33,74 @@ void terminate_window(GLFWwindow *wndw) {
 	glfwTerminate();
 }
 
-void init_vulkan(VulkanRuntimeInfo *vri) {
+bool init_vulkan(VulkanRuntimeInfo *vri) {
+
+	llog(LOG_DEBUG, "[NGV] Started creating vulkan objects\n");
 
 #ifdef USE_VALIDATION_LAYERS
-	if (check_validation_layer_support() == false) {
-		llog(LOG_WARNING, "Validation layers unsupported\n");
+	llog(LOG_DEBUG, "[NGV] Validation layers are enabled\n");
+
+	if (!check_validation_layer_support()) {
+		llog(LOG_WARNING, "[NGV] Validation layers unsupported\n");
 	}
 #endif
 
 	if (!create_instance(vri)) {
-		llog(LOG_INFO, "Vulkan instance created\n");
-		return;
+		return false;
 	}
 
 #ifdef USE_VALIDATION_LAYERS
 	attach_logger_callback(vri);
 #endif
+
 	vri->sys_window = init_window();
 
-	create_surface(vri);
+	if(!create_surface(vri)){
+		return false;
+	}
 
-	pick_physical_device(vri);
+	if(!pick_physical_device(vri)){
+		return false;
+	}
 
-	create_logical_device(vri);
+	if(!create_logical_device(vri)){
+		return false;
+	}
 
-	create_swapchain(vri);
+	if(!create_swapchain(vri)){
+		return false;
+	}
 	
-	create_image_views(vri);
+	if(!create_image_views(vri)){
+		return false;
+	}
 
-	create_renderpass(vri);
+	if(!create_renderpass(vri)){
+		return false;
+	}
 
-	create_pipeline(vri);
+	if(!create_pipeline(vri)){
+		return false;
+	}
+
+	if(!create_framebuffers(vri)){
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[NGV] Finished creating vulkan objects\n");
+	return true;
+
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
+
+	llog(LOG_DEBUG, "[NGV] Started destroying vulkan objects\n");
+
 #ifdef USE_VALIDATION_LAYERS
 	detach_logger_callback(vri);
 #endif
+
+	destroy_framebuffers(vri);
 
 	destroy_pipeline(vri);
 
@@ -84,4 +115,7 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	destroy_surface(vri);
 
 	destroy_instance(vri);
+
+	llog(LOG_DEBUG, "[NGV] Finished destroying vulkan objects\n");
+
 }

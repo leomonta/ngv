@@ -1,6 +1,7 @@
 #include "vkinit_utils.h"
 
 #include "logger.h"
+#include "utils.h"
 #include "vulkan_initialization.h"
 
 #include <errno.h>
@@ -8,6 +9,54 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+bool check_validation_layer_support() {
+
+	uint32_t count = 0;
+	vkEnumerateInstanceLayerProperties(&count, nullptr);
+
+	VkLayerProperties *props = (VkLayerProperties *)(malloc(sizeof(VkLayerProperties) * count));
+	TEST_MALLOC(props)
+
+	vkEnumerateInstanceLayerProperties(&count, props);
+
+	for (unsigned i = 0; i < VALIDATION_LAYERS_COUNT; ++i) {
+
+		for (unsigned j = 0; j < count; ++j) {
+			if (strcmp(VALIDATION_LAYERS[i], props[j].layerName) == 0) {
+				llog(LOG_DEBUG, "[DEBUG] Validation layer found\n");
+				free(props);
+				return true;
+			}
+		}
+	}
+
+	free(props);
+
+	return false;
+}
+
+const char **get_required_extensions(uint32_t *count) {
+
+	// get vulkan extensions from glfw
+	const char **glfw_exts;
+
+	glfw_exts = glfwGetRequiredInstanceExtensions(count);
+
+#ifdef USE_VALIDATION_LAYERS
+	++(*count);
+#endif
+
+	auto exts = (const char **)malloc(*count * sizeof(char *));
+	TEST_MALLOC_RET(exts, nullptr)
+	memcpy(exts, glfw_exts, *count * sizeof(const char *));
+
+#ifdef USE_VALIDATION_LAYERS
+	exts[*count - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+#endif
+
+	return exts;
+}
 
 QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
@@ -17,11 +66,12 @@ QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR sur
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 
 	if (count <= 0) {
-		llog(LOG_ERROR, "Could not find any queue family\n");
+		llog(LOG_ERROR, "[QUEUES] Could not find any queue family\n");
 		return res;
 	}
 
 	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
+	TEST_MALLOC_RET(queues, res)
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queues);
 
 	for (uint32_t i = 0; i < count; ++i) {
@@ -56,7 +106,13 @@ bool has_required_extensions(VkPhysicalDevice device) {
 	uint32_t count;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
 
+	if (count <= 0) {
+		llog(LOG_ERROR, "[PHYSICAL DEVICE] Could not find any device extension property\n");
+		return false;
+	}
+
 	VkExtensionProperties *aval_exts = malloc(sizeof(VkExtensionProperties) * count);
+	TEST_MALLOC(aval_exts)
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, aval_exts);
 
 	bool res = false;
@@ -113,7 +169,6 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 			continue;
 		}
 
-		// TODO:
 		// free the swapchain details (swd) since I don't need these anymore
 		if (swd.modes != nullptr) {
 			free(swd.modes);
@@ -258,8 +313,14 @@ SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR sur
 	uint32_t count;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
 
+	if (count <= 0) {
+		llog(LOG_ERROR, "[SWAPCHAIN] Could not find any available surface format\n");
+		return res;
+	}
+
 	if (count != 0) {
 		res.formats = malloc(sizeof(VkSurfaceFormatKHR) * count);
+		TEST_MALLOC_RET(res.formats, res)
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, res.formats);
 		res.formats_count = count;
 	}
@@ -269,6 +330,7 @@ SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR sur
 
 	if (count != 0) {
 		res.modes = malloc(sizeof(VkPresentModeKHR) * count);
+		TEST_MALLOC_RET(res.formats, res)
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, res.modes);
 		res.modes_count = count;
 	}
@@ -286,7 +348,7 @@ VkSurfaceFormatKHR pick_swapchain_format(const VkSurfaceFormatKHR *formats, cons
 		}
 	}
 
-	llog(LOG_WARNING, "[Swapchain] Could not choose the preferred format\n");
+	llog(LOG_WARNING, "[SWAPCHAIN] Could not choose the preferred format\n");
 
 	// else whatever
 	return formats[0];
@@ -301,7 +363,7 @@ VkPresentModeKHR pick_swapchain_mode(const VkPresentModeKHR *modes, const size_t
 		}
 	}
 
-	llog(LOG_WARNING, "[Swapchain] Could not choose the preferred present mode (MAILBOX). Using the default (FIFO)\n");
+	llog(LOG_WARNING, "[SWAPCHAIN] Could not choose the preferred present mode (MAILBOX). Using the default (FIFO)\n");
 
 	// else FIFO is guaranteed to exists
 	return VK_PRESENT_MODE_FIFO_KHR;
@@ -311,8 +373,8 @@ VkExtent2D pick_swapchain_extent(const VkSurfaceCapabilitiesKHR *caps, GLFWwindo
 	// if width or height is `0xffffffff` we have free reign on the swachain extent
 	// else we just use the maximum
 	if (caps->currentExtent.width != 0xffffffff) {
+		llog(LOG_WARNING, "[SWAPCHAIN] Could not choose the preferred extent\n");
 		return caps->maxImageExtent;
-		llog(LOG_WARNING, "[Swapchain] Could not choose the preferred extent\n");
 	} else {
 		uint32_t width, height;
 		glfwGetFramebufferSize(win, (int *)(&width), (int *)(&height));
@@ -340,6 +402,11 @@ bool compile_shader_file(const char *filename, const ShaderKind kind, shaderc_co
 	auto sz = (unsigned long)(ftell(sd_file));
 
 	char *code = malloc(sz);
+	if (code == NULL) {
+		llog(LOG_FATAL, "[MEM] 'malloc' failed: %s\n", strerror(errno));
+		fclose(sd_file);
+		return false;
+	}
 
 	fseek(sd_file, 0, SEEK_SET);
 	fread(code, 1, sz, sd_file);

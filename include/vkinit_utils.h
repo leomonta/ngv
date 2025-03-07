@@ -1,8 +1,31 @@
 #pragma once
 
+#include "config.h"
 #include "vulkan_initialization.h"
 
 #include <shaderc/shaderc.h>
+
+// ugly I KNOW
+#ifdef USE_VALIDATION_LAYERS
+static const char        *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
+static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
+#endif
+
+/**
+ * Checks if the validation layers are supported on this system
+ *
+ * @return true if validation layers are supported, false otherwise
+ */
+bool check_validation_layer_support();
+
+/**
+ * Queries glfw about the required extensions for Vulkan and returns a **mallocated array that needs to be manually freed**
+ *
+ * @param[out] `count` the number of required extensions returned
+ *
+ * @return an array of required extensions names
+ */
+const char **get_required_extensions(uint32_t *count);
 
 /**
  * Queries the queue capabilities of the device and returns the indicies of the available ones
@@ -118,4 +141,3 @@ bool compile_shader(const char *code, const size_t size, const ShaderKind kind, 
  * #return if the operation was successfull
  */
 bool release_shader(shaderc_compilation_result_t res);
-

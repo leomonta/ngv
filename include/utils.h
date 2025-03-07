@@ -3,11 +3,24 @@
  */
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 // just a standard
 typedef uint32_t bitfield;
 typedef uint64_t longBitfield;
+
+#define TEST_MALLOC(ptr)                                                 \
+	if (ptr == NULL) {                                                   \
+		llog(LOG_FATAL, "[MEM] 'malloc' failed: %s\n", strerror(errno)); \
+		return false;                                                    \
+	}
+
+#define TEST_MALLOC_RET(ptr, ret)                                        \
+	if (ptr == NULL) {                                                   \
+		llog(LOG_FATAL, "[MEM] 'malloc' failed: %s\n", strerror(errno)); \
+		return ret;                                                      \
+	}
 
 /**
  * Retrives the values at index `i` from the bitfield `bf`
