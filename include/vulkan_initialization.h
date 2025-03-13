@@ -69,6 +69,8 @@ typedef struct {
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
 	VkRenderPass             renderpass;
+	VkCommandPool            cmd_pool;
+	VkCommandBuffer          cmd_buffer;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
@@ -236,7 +238,7 @@ bool destroy_pipeline(VulkanRuntimeInfo *vri);
 bool create_renderpass(VulkanRuntimeInfo *vri);
 
 /**
- * Destroys the pipeline and releases the compiles shaders
+ * Destroys the pipeline
  *
  * @param[in] `vri` the vulkan context to use
  *
@@ -254,9 +256,46 @@ bool destroy_renderpass(VulkanRuntimeInfo *vri);
 bool create_framebuffers(VulkanRuntimeInfo *vri);
 
 /**
+ * Destroys the framebuffer
  *
  * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
 bool destroy_framebuffers(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates the command pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_command_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the command pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_command_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates the command buffer
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_command_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the command buffer
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_command_buffer(VulkanRuntimeInfo *vri);

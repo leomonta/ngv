@@ -6,6 +6,7 @@
 #include "vkinit_utils.h"
 
 #include <errno.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -45,14 +46,6 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
 	TEST_MALLOC(ext_props)
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
-
-#ifdef RAW_PRINTS
-	llog(LOG_DEBUG, "[INSTANCE] Available instance extensions:\n");
-
-	for (unsigned i = 0; i < extension_count; ++i) {
-		printf("\t%s\n", ext_props[i].extensionName);
-	}
-#endif
 
 	free(ext_props);
 
@@ -640,5 +633,52 @@ bool destroy_framebuffers(VulkanRuntimeInfo *vri) {
 	}
 	free(vri->swapchain.framebuffers);
 	vri->swapchain.framebuffers = nullptr;
+	return true;
+}
+
+bool create_command_pool(VulkanRuntimeInfo *vri) {
+
+	QueueFamilyIndicies qs = get_queue_families(vri->physical_dev, vri->surface);
+
+	VkCommandPoolCreateInfo pool_crate = {0};
+	pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	pool_crate.queueFamilyIndex        = qs.graphics;
+
+	auto res = vkCreateCommandPool(vri->logical_dev, &pool_crate, nullptr, &vri->cmd_pool);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the command pool: %s\n", VkResult_str(res));
+		return false;
+	}
+	llog(LOG_DEBUG, "[COMMAND POOL] Command pool successfully created\n");
+
+	return true;
+}
+
+bool destroy_command_pool(VulkanRuntimeInfo *vri) {
+	vkDestroyCommandPool(vri->logical_dev, vri->cmd_pool, nullptr);
+	return true;
+}
+
+bool create_command_buffer(VulkanRuntimeInfo *vri) {
+	VkCommandBufferAllocateInfo cmd_crate = {0};
+	cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmd_crate.commandPool                 = vri->cmd_pool;
+	cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmd_crate.commandBufferCount          = 1;
+
+	auto res = vkAllocateCommandBuffers(vri->logical_dev, &cmd_crate, &vri->cmd_buffer);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the command buffer: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_FATAL, "[COMMAND BUFFER] Command buffer successfully created\n");
+	return true;
+}
+
+bool destroy_command_buffer(VulkanRuntimeInfo *vri) {
+		
+
 	return true;
 }
