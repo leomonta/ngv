@@ -1,9 +1,11 @@
 #include "vkinit_utils.h"
 
+#include "config.h"
 #include "logger.h"
 #include "utils.h"
 #include "vulkan_initialization.h"
 
+#include <cstdint>
 #include <errno.h>
 #include <shaderc/shaderc.h>
 #include <stdio.h>
@@ -131,6 +133,22 @@ bool has_required_extensions(VkPhysicalDevice device) {
 	return res;
 }
 
+VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t count) {
+	VkPhysicalDeviceProperties props;
+
+	VkPhysicalDevice res = VK_NULL_HANDLE;
+
+	for (size_t i = 0; i < count; ++i) {
+		vkGetPhysicalDeviceProperties(devs[i], &props);
+		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %lo\n", props.deviceID);
+		if (props.deviceID == VULKAN_CHOSEN_PHYSICAL_DEVICE_ID) {
+			res = devs[i];
+		}
+	}
+
+	return res;
+}
+
 /*
  * Honestly 99% of the there are going to be:
  * 1 dedicated GPU (desktop)
@@ -140,7 +158,7 @@ bool has_required_extensions(VkPhysicalDevice device) {
  * So the selection should be much simpler
  * but this way I can stop the program if the device does not support features that are necessary to me
  */
-VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface) {
+VkPhysicalDevice filter_suitable_devices(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface) {
 
 	auto     choice    = VK_NULL_HANDLE;
 	unsigned score     = 0;
@@ -156,6 +174,7 @@ VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t cou
 		if (!at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
 			continue;
 		}
+
 		if (!at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
 			continue;
 		}

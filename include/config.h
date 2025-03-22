@@ -2,9 +2,12 @@
 /**
  * Compile defines switches to enable / disable various functionality due to DEBUG / non DEBUG compilation
  */
+#if ! defined(DEBUG) && ! defined(NDEBUG)
+#	error "At least one between DEBUG and NDEBUG must be defined at compile time"
+#endif
 
 #if defined(DEBUG) && defined(NDEBUG)
-#	error "cannot define both DEBUG and NDEBUG at the same time"
+#	error "Cannot define both DEBUG and NDEBUG at the same time"
 #endif
 
 #ifdef DEBUG
@@ -14,3 +17,5 @@
 #ifdef NDEBUG
 
 #endif
+
+#define VULKAN_CHOSEN_PHYSICAL_DEVICE_ID 22440

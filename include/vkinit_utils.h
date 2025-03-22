@@ -48,6 +48,15 @@ get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 bool has_required_extensions(VkPhysicalDevice device);
 
 /**
+ * Reads off a file (in the future maybe) or a compile time constants which physica device should be used
+ *
+ * @param[in] `devs` the list of devices in the system
+ *
+ * @return the `VkPhysicalDevice` chosen
+ */
+VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t count);
+
+/**
  * Pick the best physical (as in hardware) device based on some requirements (swap chain support, graphic family availability)
  * and some metrics (is a discrete GPU, how much memory it has)
  *
@@ -57,7 +66,7 @@ bool has_required_extensions(VkPhysicalDevice device);
  *
  * @return the best device available or a `VK_NULL_HANDLE` if none is found
  */
-VkPhysicalDevice pick_best_device(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface);
+VkPhysicalDevice filter_suitable_devices(const VkPhysicalDevice *devs, const size_t count, VkSurfaceKHR surface);
 
 /**
  * Given a `VkResult` returns its '#define' name

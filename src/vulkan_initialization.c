@@ -6,7 +6,6 @@
 #include "vkinit_utils.h"
 
 #include <errno.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,7 +31,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	app_create.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 	app_create.pEngineName        = "None";
 	app_create.engineVersion      = VK_MAKE_VERSION(0, 0, 0);
-	app_create.apiVersion         = VK_API_VERSION_1_0;
+	app_create.apiVersion         = VK_API_VERSION_1_4;
 
 	// what we need to create with vkCreateInstance
 	VkInstanceCreateInfo createInfo = {0};
@@ -129,22 +128,20 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(vri->instance, &count, nullptr);
 
-	if (count <= 0) {
-		llog(LOG_ERROR, "[PHYSICAL DEV] Could not enumerate physical devices\n");
-		return false;
-	}
+	llog(LOG_DEBUG, "[PHYSICAL DEVICE] count = %d\n", count);
 
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
 	TEST_MALLOC(devs)
-
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
-	auto best_dev = pick_best_device(devs, count, vri->surface);
-	if (best_dev == VK_NULL_HANDLE) {
+	//auto chosen_dev = filter_suitable_devices(devs, count, vri->surface);
+	auto chosen_dev = get_chosen_device(devs, count); //devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
+
+	if (chosen_dev == VK_NULL_HANDLE) {
 		llog(LOG_FATAL, "[PHYSICAL DEVICE] Could not find a suitable physical device\n");
 		return false;
 	}
-	vri->physical_dev = best_dev;
+	vri->physical_dev = chosen_dev;
 
 	free(devs);
 
@@ -673,12 +670,7 @@ bool create_command_buffer(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	llog(LOG_FATAL, "[COMMAND BUFFER] Command buffer successfully created\n");
+	llog(LOG_DEBUG, "[COMMAND BUFFER] Command buffer successfully created\n");
 	return true;
 }
 
-bool destroy_command_buffer(VulkanRuntimeInfo *vri) {
-		
-
-	return true;
-}

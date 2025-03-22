@@ -290,12 +290,3 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool create_command_buffer(VulkanRuntimeInfo *vri);
-
-/**
- * Destroys the command buffer
- *
- * @param[in] `vri` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool destroy_command_buffer(VulkanRuntimeInfo *vri);
