@@ -134,8 +134,8 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 	TEST_MALLOC(devs)
 	vkEnumeratePhysicalDevices(vri->instance, &count, devs);
 
-	//auto chosen_dev = filter_suitable_devices(devs, count, vri->surface);
-	auto chosen_dev = get_chosen_device(devs, count); //devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
+	// auto chosen_dev = filter_suitable_devices(devs, count, vri->surface);
+	auto chosen_dev = get_chosen_device(devs, count); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
 
 	if (chosen_dev == VK_NULL_HANDLE) {
 		llog(LOG_FATAL, "[PHYSICAL DEVICE] Could not find a suitable physical device\n");
@@ -313,12 +313,11 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	free(scd.modes);
 
 	// retrieving images
-	uint32_t count;
-	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, nullptr);
+	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &vri->swapchain.buffers_count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
-	vri->swapchain.buffers = malloc(sizeof(VkImage) * count);
+	vri->swapchain.buffers = malloc(sizeof(VkImage) * vri->swapchain.buffers_count);
 	TEST_MALLOC(vri->swapchain.buffers);
-	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &count, vri->swapchain.buffers);
+	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &vri->swapchain.buffers_count, vri->swapchain.buffers);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully created\n");
 
@@ -570,12 +569,22 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments    = &cl_ref;
 
+	VkSubpassDependency sp_deps = {0};
+	sp_deps.srcSubpass          = VK_SUBPASS_EXTERNAL;
+	sp_deps.dstSubpass          = 0;
+	sp_deps.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	sp_deps.srcAccessMask       = VK_ACCESS_NONE;
+	sp_deps.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	sp_deps.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 	VkRenderPassCreateInfo rp_create = {0};
 	rp_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	rp_create.attachmentCount        = 1;
 	rp_create.pAttachments           = &cl_attachment;
 	rp_create.subpassCount           = 1;
 	rp_create.pSubpasses             = &subpass;
+	rp_create.dependencyCount        = 1;
+	rp_create.pDependencies          = &sp_deps;
 
 	auto res = vkCreateRenderPass(vri->logical_dev, &rp_create, nullptr, &vri->renderpass);
 	if (res != VK_SUCCESS) {
@@ -674,3 +683,43 @@ bool create_command_buffer(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
+bool create_sync_objects(VulkanRuntimeInfo *vri) {
+	VkSemaphoreCreateInfo sem_create = {0};
+	sem_create.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->image_available);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->render_finished);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	VkFenceCreateInfo fnc_create = {0};
+	fnc_create.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fnc_create.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->in_flight_fence);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[SYNCHRO] Synchronizaion semphores successfully created\n");
+
+	return true;
+}
+
+bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
+	vkDestroyFence(vri->logical_dev, vri->in_flight_fence, nullptr);
+	vkDestroySemaphore(vri->logical_dev, vri->render_finished, nullptr);
+	vkDestroySemaphore(vri->logical_dev, vri->image_available, nullptr);
+
+	llog(LOG_DEBUG, "[SYNCHRO] Synchronization objects successfully destroyed\n");
+
+	return true;
+}

@@ -50,3 +50,46 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 	}
 	return true;
 }
+
+void draw_frame(VulkanRuntimeInfo *vri) {
+	vkWaitForFences(vri->logical_dev, 1, &vri->in_flight_fence, VK_TRUE, UINT64_MAX);
+	vkResetFences(vri->logical_dev, 1, &vri->in_flight_fence);
+
+	uint32_t img_index;
+	vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->image_available, VK_NULL_HANDLE, &img_index);
+
+	vkResetCommandBuffer(vri->cmd_buffer, 0);
+
+	record_cmd_buff(vri, img_index);
+
+	VkSemaphore          signal_sems[] = {vri->render_finished};
+	VkSemaphore          wait_sems[]   = {vri->image_available};
+	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	VkSubmitInfo         submit_info   = {0};
+	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.waitSemaphoreCount     = 1;
+	submit_info.pWaitSemaphores        = wait_sems;
+	submit_info.pWaitDstStageMask      = wait_stages;
+	submit_info.commandBufferCount     = 1;
+	submit_info.pCommandBuffers        = &vri->cmd_buffer;
+	submit_info.signalSemaphoreCount   = 1;
+	submit_info.pSignalSemaphores      = signal_sems;
+
+	auto res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->in_flight_fence);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
+	}
+
+	VkPresentInfoKHR present_info   = {0};
+	present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores    = signal_sems;
+
+	VkSwapchainKHR swapchains[] = {vri->swapchain.swapchain};
+	present_info.swapchainCount  = 1;
+	present_info.pSwapchains     = swapchains;
+	present_info.pImageIndices   = &img_index;
+	present_info.pResults        = nullptr; // Optional
+
+	vkQueuePresentKHR(vri->device_queues.present, &present_info);
+}

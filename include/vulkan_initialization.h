@@ -48,7 +48,7 @@ typedef struct {
 
 typedef struct {
 	VkSwapchainKHR swapchain;
-	size_t         buffers_count;
+	uint32_t         buffers_count;
 	VkImage       *buffers;
 	VkImageView   *views;
 	VkFramebuffer *framebuffers;
@@ -71,6 +71,9 @@ typedef struct {
 	VkRenderPass             renderpass;
 	VkCommandPool            cmd_pool;
 	VkCommandBuffer          cmd_buffer;
+	VkSemaphore              image_available;
+	VkSemaphore              render_finished;
+	VkFence                  in_flight_fence;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
@@ -290,3 +293,21 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool create_command_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Create the samaphores needed for GPU <-> CPU Synchronization
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_sync_objects(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the samaphores needed for GPU <-> CPU Synchronization
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_sync_objects(VulkanRuntimeInfo *vri);

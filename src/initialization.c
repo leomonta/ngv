@@ -95,6 +95,11 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	if(!create_sync_objects(vri)){
+		return false;
+	}
+
+	
 	llog(LOG_DEBUG, "[NGV] Finished creating vulkan objects\n");
 	return true;
 
@@ -107,6 +112,8 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 #ifdef USE_VALIDATION_LAYERS
 	detach_logger_callback(vri);
 #endif
+	destroy_sync_objects(vri);
+
 	destroy_command_pool(vri);
 
 	destroy_framebuffers(vri);

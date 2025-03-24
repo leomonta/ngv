@@ -12,3 +12,8 @@
  * @return if the operation was successfull
  */
 bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index);
+
+/**
+ *
+ */
+void draw_frame(VulkanRuntimeInfo *vri);

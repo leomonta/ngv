@@ -5,7 +5,6 @@
 #include "utils.h"
 #include "vulkan_initialization.h"
 
-#include <cstdint>
 #include <errno.h>
 #include <shaderc/shaderc.h>
 #include <stdio.h>
@@ -140,7 +139,7 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 
 	for (size_t i = 0; i < count; ++i) {
 		vkGetPhysicalDeviceProperties(devs[i], &props);
-		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %lo\n", props.deviceID);
+		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %ld\n", props.deviceID);
 		if (props.deviceID == VULKAN_CHOSEN_PHYSICAL_DEVICE_ID) {
 			res = devs[i];
 		}
