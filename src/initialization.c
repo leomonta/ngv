@@ -12,7 +12,7 @@ GLFWwindow *init_window() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	// TODO: Handle Resizing
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	// get the monitor size
 	// if unavailable standard 1920x1080

@@ -42,12 +42,6 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	uint32_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
-	VkExtensionProperties *ext_props = (VkExtensionProperties *)(malloc(sizeof(VkExtensionProperties) * extension_count));
-	TEST_MALLOC(ext_props)
-	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, ext_props);
-
-	free(ext_props);
-
 #ifdef USE_VALIDATION_LAYERS
 	createInfo.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
 	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
@@ -139,6 +133,7 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
 	if (chosen_dev == VK_NULL_HANDLE) {
 		llog(LOG_FATAL, "[PHYSICAL DEVICE] Could not find a suitable physical device\n");
+		free(devs);
 		return false;
 	}
 	vri->physical_dev = chosen_dev;
@@ -360,6 +355,7 @@ bool create_image_views(VulkanRuntimeInfo *vri) {
 		auto res = vkCreateImageView(vri->logical_dev, &vw_create, nullptr, &vri->swapchain.views[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SWAPCHAIN] Could not create image views: %s\n", VkResult_str(res));
+			free(vri->swapchain.views);
 			return false;
 		}
 	}
@@ -623,6 +619,7 @@ bool create_framebuffers(VulkanRuntimeInfo *vri) {
 		auto res = vkCreateFramebuffer(vri->logical_dev, &fb_create, nullptr, &vri->swapchain.framebuffers[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[FRAMBUFFER] Could not create a frambuffer: %s\n", VkResult_str(res));
+			free(vri->swapchain.framebuffers);
 			return false;
 		}
 	}
@@ -667,13 +664,14 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri) {
 }
 
 bool create_command_buffer(VulkanRuntimeInfo *vri) {
+
 	VkCommandBufferAllocateInfo cmd_crate = {0};
 	cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_crate.commandPool                 = vri->cmd_pool;
 	cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_crate.commandBufferCount          = 1;
+	cmd_crate.commandBufferCount          = MAX_CONCURRENT_FRAMES;
 
-	auto res = vkAllocateCommandBuffers(vri->logical_dev, &cmd_crate, &vri->cmd_buffer);
+	auto res = vkAllocateCommandBuffers(vri->logical_dev, &cmd_crate, vri->cmd_buff_mngn.cmd_buffer);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the command buffer: %s\n", VkResult_str(res));
 		return false;
@@ -687,26 +685,29 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 	VkSemaphoreCreateInfo sem_create = {0};
 	sem_create.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->image_available);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
-		return false;
-	}
-
-	res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->render_finished);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
-		return false;
-	}
-
 	VkFenceCreateInfo fnc_create = {0};
 	fnc_create.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fnc_create.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->in_flight_fence);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
-		return false;
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
+
+		auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->cmd_buff_mngn.image_available[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
+			return false;
+		}
+
+		res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->cmd_buff_mngn.render_finished[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
+			return false;
+		}
+
+		res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->cmd_buff_mngn.in_flight_fence[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
+			return false;
+		}
 	}
 
 	llog(LOG_DEBUG, "[SYNCHRO] Synchronizaion semphores successfully created\n");
@@ -715,9 +716,12 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 }
 
 bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
-	vkDestroyFence(vri->logical_dev, vri->in_flight_fence, nullptr);
-	vkDestroySemaphore(vri->logical_dev, vri->render_finished, nullptr);
-	vkDestroySemaphore(vri->logical_dev, vri->image_available, nullptr);
+
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
+		vkDestroyFence(vri->logical_dev, vri->cmd_buff_mngn.in_flight_fence[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->cmd_buff_mngn.render_finished[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->cmd_buff_mngn.image_available[i], nullptr);
+	}
 
 	llog(LOG_DEBUG, "[SYNCHRO] Synchronization objects successfully destroyed\n");
 

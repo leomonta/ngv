@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config.h"
 #include "utils.h"
 
 #include <stddef.h>
@@ -48,7 +49,7 @@ typedef struct {
 
 typedef struct {
 	VkSwapchainKHR swapchain;
-	uint32_t         buffers_count;
+	uint32_t       buffers_count;
 	VkImage       *buffers;
 	VkImageView   *views;
 	VkFramebuffer *framebuffers;
@@ -61,6 +62,14 @@ typedef struct {
 	VkPipeline       pipeline;
 } ShaderPipeline;
 
+// small hack since the value is defined at compile time
+typedef struct {
+	VkCommandBuffer cmd_buffer[MAX_CONCURRENT_FRAMES];
+	VkSemaphore     image_available[MAX_CONCURRENT_FRAMES];
+	VkSemaphore     render_finished[MAX_CONCURRENT_FRAMES];
+	VkFence         in_flight_fence[MAX_CONCURRENT_FRAMES];
+} CmdBufferAndCo;
+
 typedef struct {
 	GLFWwindow              *sys_window;
 	VkInstance               instance;
@@ -70,10 +79,7 @@ typedef struct {
 	VkDevice                 logical_dev;
 	VkRenderPass             renderpass;
 	VkCommandPool            cmd_pool;
-	VkCommandBuffer          cmd_buffer;
-	VkSemaphore              image_available;
-	VkSemaphore              render_finished;
-	VkFence                  in_flight_fence;
+	CmdBufferAndCo           cmd_buff_mngn;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
