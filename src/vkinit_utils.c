@@ -491,3 +491,17 @@ bool release_shader(shaderc_compilation_result_t res) {
 
 	return true;
 }
+
+bool cleanup_swapchain(VulkanRuntimeInfo *vri) {
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+		vkDestroyFramebuffer(vri->logical_dev, vri->swapchain.framebuffers[i], nullptr);
+	}
+
+	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
+		vkDestroyImageView(vri->logical_dev, vri->swapchain.views[i], nullptr);
+	}
+
+	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+
+	return true;
+}

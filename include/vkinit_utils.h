@@ -35,8 +35,7 @@ const char **get_required_extensions(uint32_t *count);
  *
  * @return `true` if the given device satisfies the defined extensions, `false`
  */
-QueueFamilyIndicies
-get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
+QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Checks if the give `VkPhysicalDevice` supports some required extension to render on screen (e.g. swapchain)
@@ -147,6 +146,16 @@ bool compile_shader(const char *code, const size_t size, const ShaderKind kind, 
  *
  * @param[in] `res` the result to release
  *
- * #return if the operation was successfull
+ * @return if the operation was successfull
  */
 bool release_shader(shaderc_compilation_result_t res);
+
+/**
+ * Destroys all of the swachain hadles in the given context, but does not deallocate the memory
+ * this should be used to clean the swapchain before recreating it
+ *
+ * @param[in] `res` the result to release
+ *
+ * @return if the operation was successfull
+ */
+bool cleanup_swapchain(VulkanRuntimeInfo *vri);

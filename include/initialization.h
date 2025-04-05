@@ -26,7 +26,7 @@ void terminate_window(GLFWwindow *wndw);
  *
  * @param[out] `vri` the vulkan context that is gonna be initialized
  *
- * #return `false` if any problem arose
+ * @return `false` if any problem arose
  */
 bool init_vulkan(VulkanRuntimeInfo *vri);
 

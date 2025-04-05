@@ -14,6 +14,8 @@
 bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index);
 
 /**
+ * Sends command to the command buffer and to the other queues to issue a draw call
  *
+ * @param[in] `vri` the vulkan context to user
  */
 void draw_frame(VulkanRuntimeInfo *vri);

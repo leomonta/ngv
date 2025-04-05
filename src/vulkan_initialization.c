@@ -251,6 +251,7 @@ bool destroy_surface(VulkanRuntimeInfo *vri) {
 }
 
 bool create_swapchain(VulkanRuntimeInfo *vri) {
+
 	auto scd = get_swapchain_details(vri->physical_dev, vri->surface);
 
 	auto format           = pick_swapchain_format(scd.formats, scd.formats_count);
@@ -310,11 +311,42 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	// retrieving images
 	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &vri->swapchain.buffers_count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
-	vri->swapchain.buffers = malloc(sizeof(VkImage) * vri->swapchain.buffers_count);
+	// I can exploi the fact the when i recreate the swapchain `cleanup_swapchain` does not free the pointer, just need to ensure that the defualt value is nullptr
+	vri->swapchain.buffers = realloc(vri->swapchain.buffers, sizeof(VkImage) * vri->swapchain.buffers_count);
 	TEST_MALLOC(vri->swapchain.buffers);
 	vkGetSwapchainImagesKHR(vri->logical_dev, sc, &vri->swapchain.buffers_count, vri->swapchain.buffers);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully created\n");
+
+	return true;
+}
+
+bool re_create_swapchain(VulkanRuntimeInfo *vri) {
+
+	int width = 0, height = 0;
+
+	glfwGetFramebufferSize(vri->sys_window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(vri->sys_window, &width, &height);
+		llog(LOG_DEBUG, "[DRAWING] minized...\n");
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(vri->logical_dev);
+
+	cleanup_swapchain(vri);
+
+	if (create_swapchain(vri)) {
+		return false;
+	}
+
+	if (create_image_views(vri)) {
+		return false;
+	}
+
+	if (create_framebuffers(vri) == false) {
+		return false;
+	}
 
 	return true;
 }
@@ -332,7 +364,7 @@ bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 
 bool create_image_views(VulkanRuntimeInfo *vri) {
 
-	vri->swapchain.views = malloc(sizeof(VkImageView) * vri->swapchain.buffers_count);
+	vri->swapchain.views = realloc(vri->swapchain.views, sizeof(VkImageView) * vri->swapchain.buffers_count);
 	TEST_MALLOC(vri->swapchain.views);
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
@@ -377,7 +409,6 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 }
 
 bool create_pipeline(VulkanRuntimeInfo *vri) {
-
 	shaderc_compilation_result_t vert_res;
 	VkShaderModule               vert_module = {0};
 
@@ -600,7 +631,7 @@ bool destroy_renderpass(VulkanRuntimeInfo *vri) {
 
 bool create_framebuffers(VulkanRuntimeInfo *vri) {
 
-	vri->swapchain.framebuffers = malloc(sizeof(VkFramebuffer) * vri->swapchain.buffers_count);
+	vri->swapchain.framebuffers = realloc(vri->swapchain.framebuffers, sizeof(VkFramebuffer) * vri->swapchain.buffers_count);
 	TEST_MALLOC(vri->swapchain.framebuffers)
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {

@@ -55,10 +55,21 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 
 void draw_frame(VulkanRuntimeInfo *vri) {
 	vkWaitForFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
-	vkResetFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index]);
-
 	uint32_t img_index;
-	vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->cmd_buff_mngn.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+	auto vk_res = vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->cmd_buff_mngn.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+
+	if (vk_res == VK_ERROR_OUT_OF_DATE_KHR) {
+		llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
+		re_create_swapchain(vri);
+		return;
+	} else if (vk_res == VK_SUBOPTIMAL_KHR) {
+		llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
+	} else if (vk_res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(vk_res));
+
+	}
+
+	vkResetFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index]);
 
 	vkResetCommandBuffer(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0);
 
@@ -77,9 +88,9 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	submit_info.signalSemaphoreCount   = 1;
 	submit_info.pSignalSemaphores      = signal_sems;
 
-	auto res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->cmd_buff_mngn.in_flight_fence[frame_index]);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
+	vk_res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->cmd_buff_mngn.in_flight_fence[frame_index]);
+	if (vk_res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(vk_res));
 	}
 
 	VkPresentInfoKHR present_info   = {0};

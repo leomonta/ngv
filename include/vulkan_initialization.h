@@ -192,6 +192,16 @@ bool destroy_surface(VulkanRuntimeInfo *vri);
 bool create_swapchain(VulkanRuntimeInfo *vri);
 
 /**
+ * destroys the old swapchain and creates it anew
+ * useful for when the viewport has changed
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool re_create_swapchain(VulkanRuntimeInfo *vri);
+
+/**
  * Destroy a swapchain and its associated data
  *
  * @param[in] `vri` the vulkan context to use
