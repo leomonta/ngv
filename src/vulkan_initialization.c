@@ -2,8 +2,10 @@
 
 #include "config.h"
 #include "logger.h"
+#include "shader_data.h"
 #include "utils.h"
 #include "vkinit_utils.h"
+#include "vulkan_memory.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -466,10 +468,10 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	// maybe ask for some kind of struct to base the layout to
 	VkPipelineVertexInputStateCreateInfo vl_create = {0};
 	vl_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vl_create.vertexBindingDescriptionCount        = 0;
-	vl_create.pVertexBindingDescriptions           = nullptr; // Optional
-	vl_create.vertexAttributeDescriptionCount      = 0;
-	vl_create.pVertexAttributeDescriptions         = nullptr; // Optional
+	vl_create.vertexBindingDescriptionCount        = 1;
+	vl_create.pVertexBindingDescriptions           = &Vertex_layout;
+	vl_create.vertexAttributeDescriptionCount      = Vertex_attributes_num;
+	vl_create.pVertexAttributeDescriptions         = Vertex_attribs;
 
 	// TODO: make this changeable for the user
 	VkPipelineInputAssemblyStateCreateInfo ia_create = {0};
@@ -756,5 +758,52 @@ bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
 
 	llog(LOG_DEBUG, "[SYNCHRO] Synchronization objects successfully destroyed\n");
 
+	return true;
+}
+
+bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
+	VkBufferCreateInfo vb_create = {};
+	vb_create.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vb_create.size               = sizeof(__temp__data);
+	vb_create.usage              = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vb_create.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
+
+	auto res = vkCreateBuffer(vri->logical_dev, &vb_create, nullptr, &vri->vertex_buffer);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[VMEM] Could not create vertex buffer: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	VkMemoryRequirements reqs;
+	vkGetBufferMemoryRequirements(vri->logical_dev, vri->vertex_buffer, &reqs);
+
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize       = reqs.size;
+	alloc_info.memoryTypeIndex      = find_memory_type(reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri);
+
+	if (alloc_info.memoryTypeIndex == (uint32_t)(-1)) {
+		llog(LOG_ERROR, "[VMEM] Failed to allocate vertex buffer memory: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, &vri->vertex_buffer_memory);
+	if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[VMEM] Failed to allocate vertex buffer memory: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	res = vkBindBufferMemory(vri->logical_dev, vri->vertex_buffer, vri->vertex_buffer_memory, 0);
+	if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[VMEM] Failed to bind the vertex buffer to its memory: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	return true;
+}
+
+bool destroy_vertex_buffer(VulkanRuntimeInfo *vri) {
+	vkFreeMemory(vri->logical_dev, vri->vertex_buffer_memory, nullptr);
+	vkDestroyBuffer(vri->logical_dev, vri->vertex_buffer, nullptr);
 	return true;
 }

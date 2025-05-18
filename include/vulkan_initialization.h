@@ -79,6 +79,8 @@ typedef struct {
 	VkDevice                 logical_dev;
 	VkRenderPass             renderpass;
 	VkCommandPool            cmd_pool;
+	VkBuffer                 vertex_buffer;
+	VkDeviceMemory           vertex_buffer_memory;
 	CmdBufferAndCo           cmd_buff_mngn;
 	QueuesInfo               device_queues;
 	SwapchainInfo            swapchain;
@@ -327,3 +329,21 @@ bool create_sync_objects(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_sync_objects(VulkanRuntimeInfo *vri);
+
+/**
+ * Create the vertex buffer and sets it up with the default vertex layout
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_vertex_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the vertex buffer and sets it up with the default vertex layout
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_vertex_buffer(VulkanRuntimeInfo *vri);

@@ -94,6 +94,10 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	if(!create_vertex_buffer(vri)) {
+		return false;
+	}
+
 	if(!create_command_buffer(vri)){
 		return false;
 	}

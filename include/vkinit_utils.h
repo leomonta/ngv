@@ -159,3 +159,14 @@ bool release_shader(shaderc_compilation_result_t res);
  * @return if the operation was successfull
  */
 bool cleanup_swapchain(VulkanRuntimeInfo *vri);
+
+/**
+ * Return a memory type that satisfies the given filter and properties
+ *
+ * @param[in] `vri` the vulkan context to use
+ * @param[in] `typeFilter`
+ * @param[in] `properties`
+ *
+ * @return a memory if successfull, else 0
+ */
+uint32_t get_memory_type_index(VulkanRuntimeInfo *vri, const uint32_t typeFilter, const VkMemoryPropertyFlags properties);
