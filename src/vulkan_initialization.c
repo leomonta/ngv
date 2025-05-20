@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "vkinit_utils.h"
 #include "vulkan_memory.h"
+#include "vk_log.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -798,6 +799,11 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 		llog(LOG_ERROR, "[VMEM] Failed to bind the vertex buffer to its memory: %s\n", VkResult_str(res));
 		return false;
 	}
+
+	void *data;
+	vkMapMemory(vri->logical_dev, vri->vertex_buffer_memory, 0, vb_create.size, 0, &data);
+	memcpy(data, __temp__data, sizeof(__temp__data));
+	vkUnmapMemory(vri->logical_dev, vri->vertex_buffer_memory);
 
 	return true;
 }

@@ -416,6 +416,8 @@ bool compile_shader_file(const char *filename, const ShaderKind kind, shaderc_co
 		return false;
 	}
 
+	llog(LOG_DEBUG, "[SHADER] Compiling shader file: %s\n", filename);
+
 	fseek(sd_file, 0, SEEK_END);
 	auto sz = (unsigned long)(ftell(sd_file));
 

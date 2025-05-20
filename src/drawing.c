@@ -1,6 +1,7 @@
 #include "drawing.h"
 
 #include "logger.h"
+#include "shader_data.h"
 #include "vkinit_utils.h"
 
 static uint32_t frame_index = 0;
@@ -25,24 +26,30 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 	rp_info.renderArea.extent        = vri->swapchain.extent;
 	rp_info.clearValueCount          = 1;
 	rp_info.pClearValues             = &clearColor;
+
 	vkCmdBeginRenderPass(vri->cmd_buff_mngn.cmd_buffer[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+	{
+		vkCmdBindPipeline(vri->cmd_buff_mngn.cmd_buffer[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
+		VkViewport viewport = {0};
+		viewport.x          = 0.0f;
+		viewport.y          = 0.0f;
+		viewport.width      = (float)(vri->swapchain.extent.width);
+		viewport.height     = (float)(vri->swapchain.extent.height);
+		viewport.minDepth   = 0.0f;
+		viewport.maxDepth   = 1.0f;
+		vkCmdSetViewport(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &viewport);
 
-	vkCmdBindPipeline(vri->cmd_buff_mngn.cmd_buffer[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
-	VkViewport viewport = {0};
-	viewport.x          = 0.0f;
-	viewport.y          = 0.0f;
-	viewport.width      = (float)(vri->swapchain.extent.width);
-	viewport.height     = (float)(vri->swapchain.extent.height);
-	viewport.minDepth   = 0.0f;
-	viewport.maxDepth   = 1.0f;
-	vkCmdSetViewport(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &viewport);
+		VkRect2D scissor = {0};
+		scissor.offset   = (VkOffset2D){0, 0};
+		scissor.extent   = vri->swapchain.extent;
+		vkCmdSetScissor(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &scissor);
 
-	VkRect2D scissor = {0};
-	scissor.offset   = (VkOffset2D){0, 0};
-	scissor.extent   = vri->swapchain.extent;
-	vkCmdSetScissor(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &scissor);
+		VkBuffer     v_bufs[]  = {vri->vertex_buffer};
+		VkDeviceSize offsets[] = {0};
+		vkCmdBindVertexBuffers(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, v_bufs, offsets);
 
-	vkCmdDraw(vri->cmd_buff_mngn.cmd_buffer[frame_index], 3, 1, 0, 0);
+		vkCmdDraw(vri->cmd_buff_mngn.cmd_buffer[frame_index], sizeof(__temp__data) / sizeof(Vertex), 1, 0, 0);
+	}
 
 	vkCmdEndRenderPass(vri->cmd_buff_mngn.cmd_buffer[frame_index]);
 
@@ -56,7 +63,7 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 void draw_frame(VulkanRuntimeInfo *vri) {
 	vkWaitForFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
 	uint32_t img_index;
-	auto vk_res = vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->cmd_buff_mngn.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+	auto     vk_res = vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->cmd_buff_mngn.image_available[frame_index], VK_NULL_HANDLE, &img_index);
 
 	if (vk_res == VK_ERROR_OUT_OF_DATE_KHR) {
 		llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
@@ -66,7 +73,6 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 		llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
 	} else if (vk_res != VK_SUCCESS) {
 		llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(vk_res));
-
 	}
 
 	vkResetFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index]);
