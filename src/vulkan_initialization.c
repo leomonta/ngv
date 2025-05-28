@@ -75,6 +75,8 @@ bool destroy_instance(VulkanRuntimeInfo *vri) {
 
 	vkDestroyInstance(vri->instance, nullptr);
 
+	llog(LOG_DEBUG, "[INSTANCE] Vulkan instance successfully destroyed\n");
+
 	return true;
 }
 
@@ -230,6 +232,8 @@ bool destroy_logical_device(VulkanRuntimeInfo *vri) {
 
 	vkDestroyDevice(vri->logical_dev, nullptr);
 
+	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully destroyed\n");
+
 	return true;
 }
 
@@ -249,6 +253,8 @@ bool create_surface(VulkanRuntimeInfo *vri) {
 bool destroy_surface(VulkanRuntimeInfo *vri) {
 
 	vkDestroySurfaceKHR(vri->instance, vri->surface, nullptr);
+
+	llog(LOG_DEBUG, "[DEBUG] Surface successfully destroyed\n");
 
 	return true;
 }
@@ -351,6 +357,8 @@ bool re_create_swapchain(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully re-created\n");
+
 	return true;
 }
 
@@ -361,6 +369,8 @@ bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 	vri->swapchain.buffers_count = 0;
 
 	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+
+	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully destroyed\n");
 
 	return true;
 }
@@ -407,6 +417,8 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 
 	free(vri->swapchain.views);
 	vri->swapchain.views = nullptr;
+
+	llog(LOG_DEBUG, "[SWAPCHAIN] Image views successfully destroyed\n");
 
 	return true;
 }
@@ -576,6 +588,8 @@ bool destroy_pipeline(VulkanRuntimeInfo *vri) {
 	vkDestroyPipeline(vri->logical_dev, vri->pipeline.pipeline, nullptr);
 	vkDestroyPipelineLayout(vri->logical_dev, vri->pipeline.layout, nullptr);
 
+	llog(LOG_DEBUG, "[PIPELINE] Graphics pipeline successfully destroyed\n");
+
 	return true;
 }
 
@@ -629,6 +643,8 @@ bool destroy_renderpass(VulkanRuntimeInfo *vri) {
 
 	vkDestroyRenderPass(vri->logical_dev, vri->renderpass, nullptr);
 
+	llog(LOG_DEBUG, "[RENDERPASS] Renderpass successfully destroyed\n");
+
 	return true;
 }
 
@@ -670,6 +686,8 @@ bool destroy_framebuffers(VulkanRuntimeInfo *vri) {
 	}
 	free(vri->swapchain.framebuffers);
 	vri->swapchain.framebuffers = nullptr;
+
+	llog(LOG_DEBUG, "[FRAMBUFFER] framebuffers successfully destroyed\n");
 	return true;
 }
 
@@ -694,6 +712,9 @@ bool create_command_pool(VulkanRuntimeInfo *vri) {
 
 bool destroy_command_pool(VulkanRuntimeInfo *vri) {
 	vkDestroyCommandPool(vri->logical_dev, vri->cmd_pool, nullptr);
+
+	llog(LOG_DEBUG, "[COMMAND POOL] Command pool successfully destroyed\n");
+
 	return true;
 }
 
@@ -805,11 +826,16 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 	memcpy(data, __temp__data, sizeof(__temp__data));
 	vkUnmapMemory(vri->logical_dev, vri->vertex_buffer_memory);
 
+	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
+
 	return true;
 }
 
 bool destroy_vertex_buffer(VulkanRuntimeInfo *vri) {
 	vkFreeMemory(vri->logical_dev, vri->vertex_buffer_memory, nullptr);
 	vkDestroyBuffer(vri->logical_dev, vri->vertex_buffer, nullptr);
+
+	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully destroyed and freed\n");
+
 	return true;
 }

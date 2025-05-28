@@ -4,6 +4,7 @@
 #include "shader_data.h"
 #include "vkinit_utils.h"
 
+
 static uint32_t frame_index = 0;
 
 bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
@@ -88,27 +89,26 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.waitSemaphoreCount     = 1;
 	submit_info.pWaitSemaphores        = wait_sems;
+	submit_info.signalSemaphoreCount   = 1;
+	submit_info.pSignalSemaphores      = signal_sems;
 	submit_info.pWaitDstStageMask      = wait_stages;
 	submit_info.commandBufferCount     = 1;
 	submit_info.pCommandBuffers        = &vri->cmd_buff_mngn.cmd_buffer[frame_index];
-	submit_info.signalSemaphoreCount   = 1;
-	submit_info.pSignalSemaphores      = signal_sems;
 
 	vk_res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->cmd_buff_mngn.in_flight_fence[frame_index]);
 	if (vk_res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(vk_res));
 	}
 
+	VkSwapchainKHR   swapchains[]   = {vri->swapchain.swapchain};
 	VkPresentInfoKHR present_info   = {0};
 	present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores    = signal_sems;
-
-	VkSwapchainKHR swapchains[] = {vri->swapchain.swapchain};
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains    = swapchains;
-	present_info.pImageIndices  = &img_index;
-	present_info.pResults       = nullptr; // Optional
+	present_info.swapchainCount     = 1;
+	present_info.pSwapchains        = swapchains;
+	present_info.pImageIndices      = &img_index;
+	present_info.pResults           = nullptr; // Optional
 
 	vkQueuePresentKHR(vri->device_queues.present, &present_info);
 

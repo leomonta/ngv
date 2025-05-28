@@ -123,6 +123,8 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 
 	destroy_command_pool(vri);
 
+	destroy_vertex_buffer(vri);
+
 	destroy_framebuffers(vri);
 
 	destroy_pipeline(vri);
