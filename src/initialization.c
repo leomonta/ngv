@@ -36,7 +36,7 @@ void terminate_window(GLFWwindow *wndw) {
 bool init_vulkan(VulkanRuntimeInfo *vri) {
 
 	// need to be sure
-	*vri = (VulkanRuntimeInfo){0};
+	*vri = (VulkanRuntimeInfo){};
 
 	llog(LOG_DEBUG, "[NGV] Started creating vulkan objects\n");
 

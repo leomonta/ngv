@@ -27,7 +27,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 
 	// Application information, fairly trivial / uninmportant
 
-	VkApplicationInfo app_create = {0};
+	VkApplicationInfo app_create = {};
 
 	app_create.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	app_create.pApplicationName   = "Neon Genesis Vulkan";
@@ -37,7 +37,7 @@ bool create_instance(VulkanRuntimeInfo *vri) {
 	app_create.apiVersion         = VK_API_VERSION_1_4;
 
 	// what we need to create with vkCreateInstance
-	VkInstanceCreateInfo createInfo = {0};
+	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType                = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo     = &app_create;
 
@@ -82,7 +82,7 @@ bool destroy_instance(VulkanRuntimeInfo *vri) {
 
 bool attach_logger_callback(VulkanRuntimeInfo *vri) {
 
-	VkDebugUtilsMessengerCreateInfoEXT db_create = {0};
+	VkDebugUtilsMessengerCreateInfoEXT db_create = {};
 	db_create.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	db_create.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	db_create.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
@@ -155,15 +155,15 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	auto indices = get_queue_families(vri->physical_dev, vri->surface);
 
 	// if both GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
-	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX)) {
+	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) {
 		llog(LOG_ERROR, "[LOGICAL DEVICE] Could not satisfy the required queues necessary\n");
 		return false;
 	}
 
-	constexpr uint32_t num_needed_queues = 2;
+	constexpr uint32_t num_needed_queues = 3;
 
-	uint32_t                needed_queues[num_needed_queues] = {indices.graphics, indices.present};
-	VkDeviceQueueCreateInfo q_create[num_needed_queues]      = {0};
+	uint32_t                needed_queues[num_needed_queues] = {indices.graphics, indices.present, indices.transfer};
+	VkDeviceQueueCreateInfo q_create[num_needed_queues]      = {};
 
 	// I need to ensure that if a family supports multiple queues
 	// I only add it once to the logical device creation struct
@@ -195,8 +195,8 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		q_create[i].pQueuePriorities = &q_priority;
 	}
 
-	VkPhysicalDeviceFeatures dev_features = {0};
-	VkDeviceCreateInfo       dev_create   = {0};
+	VkPhysicalDeviceFeatures dev_features = {};
+	VkDeviceCreateInfo       dev_create   = {};
 	dev_create.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	dev_create.pQueueCreateInfos          = q_create;
 	dev_create.queueCreateInfoCount       = num_unique_queues;
@@ -220,7 +220,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	vkGetDeviceQueue(vri->logical_dev, indices.graphics, 0, &vri->device_queues.graphics);
 	vkGetDeviceQueue(vri->logical_dev, indices.present, 0, &vri->device_queues.present);
 	// vkGetDeviceQueue(vri->logical_dev, indices.compute, 0, &vri->device_queues.compure);
-	// vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
+	vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
 	// vkGetDeviceQueue(vri->logical_dev, indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
 
 	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully created\n");
@@ -274,7 +274,7 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 		image_count = clamp(image_count, scd.capabilities.minImageCount, scd.capabilities.maxImageCount);
 	}
 
-	VkSwapchainCreateInfoKHR sc_create = {0};
+	VkSwapchainCreateInfoKHR sc_create = {};
 	sc_create.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	sc_create.surface                  = vri->surface;
 	sc_create.minImageCount            = image_count;
@@ -290,12 +290,12 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	sc_create.oldSwapchain             = VK_NULL_HANDLE;
 
 	QueueFamilyIndicies indices              = get_queue_families(vri->physical_dev, vri->surface);
-	uint32_t            queueFamilyIndices[] = {indices.graphics, indices.present};
+	uint32_t            queue_indices[] = {indices.graphics, indices.present, indices.transfer};
 
 	if (indices.graphics != indices.present) {
 		sc_create.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
 		sc_create.queueFamilyIndexCount = 2;
-		sc_create.pQueueFamilyIndices   = queueFamilyIndices;
+		sc_create.pQueueFamilyIndices   = queue_indices;
 	} else {
 		sc_create.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
 		sc_create.queueFamilyIndexCount = 0;       // Optional
@@ -382,7 +382,7 @@ bool create_image_views(VulkanRuntimeInfo *vri) {
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
 
-		VkImageViewCreateInfo vw_create           = {0};
+		VkImageViewCreateInfo vw_create           = {};
 		vw_create.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		vw_create.image                           = vri->swapchain.buffers[i];
 		vw_create.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
@@ -425,10 +425,10 @@ bool destroy_image_views(VulkanRuntimeInfo *vri) {
 
 bool create_pipeline(VulkanRuntimeInfo *vri) {
 	shaderc_compilation_result_t vert_res;
-	VkShaderModule               vert_module = {0};
+	VkShaderModule               vert_module = {};
 
 	if (compile_shader_file("../shaders/main.vert", VERTEX_SHADER, &vert_res)) {
-		VkShaderModuleCreateInfo sh_create = {0};
+		VkShaderModuleCreateInfo sh_create = {};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		sh_create.codeSize                 = shaderc_result_get_length(vert_res);
 		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(vert_res));
@@ -442,10 +442,10 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	}
 
 	shaderc_compilation_result_t frag_res;
-	VkShaderModule               frag_module = {0};
+	VkShaderModule               frag_module = {};
 
 	if (compile_shader_file("../shaders/main.frag", FRAGMENT_SHADER, &frag_res)) {
-		VkShaderModuleCreateInfo sh_create = {0};
+		VkShaderModuleCreateInfo sh_create = {};
 		sh_create.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		sh_create.codeSize                 = shaderc_result_get_length(frag_res);
 		sh_create.pCode                    = (const uint32_t *)(shaderc_result_get_bytes(frag_res));
@@ -458,13 +458,13 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	VkPipelineShaderStageCreateInfo vert_stage_create = {0};
+	VkPipelineShaderStageCreateInfo vert_stage_create = {};
 	vert_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vert_stage_create.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
 	vert_stage_create.module                          = vert_module;
 	vert_stage_create.pName                           = "main";
 
-	VkPipelineShaderStageCreateInfo frag_stage_create = {0};
+	VkPipelineShaderStageCreateInfo frag_stage_create = {};
 	frag_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	frag_stage_create.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
 	frag_stage_create.module                          = frag_module;
@@ -472,14 +472,14 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 
 	VkPipelineShaderStageCreateInfo sh_stages[] = {vert_stage_create, frag_stage_create};
 
-	VkPipelineDynamicStateCreateInfo dn_create = {0};
+	VkPipelineDynamicStateCreateInfo dn_create = {};
 	dn_create.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dn_create.dynamicStateCount                = PIPELINE_DYNAMIC_STATE_COUNT;
 	dn_create.pDynamicStates                   = PIPELINE_DYNAMIC_STATE;
 
 	// TODO: set the correct layout
 	// maybe ask for some kind of struct to base the layout to
-	VkPipelineVertexInputStateCreateInfo vl_create = {0};
+	VkPipelineVertexInputStateCreateInfo vl_create = {};
 	vl_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vl_create.vertexBindingDescriptionCount        = 1;
 	vl_create.pVertexBindingDescriptions           = &Vertex_layout;
@@ -487,17 +487,17 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	vl_create.pVertexAttributeDescriptions         = Vertex_attribs;
 
 	// TODO: make this changeable for the user
-	VkPipelineInputAssemblyStateCreateInfo ia_create = {0};
+	VkPipelineInputAssemblyStateCreateInfo ia_create = {};
 	ia_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	ia_create.topology                               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	ia_create.primitiveRestartEnable                 = VK_FALSE;
 
-	VkPipelineViewportStateCreateInfo vp_create = {0};
+	VkPipelineViewportStateCreateInfo vp_create = {};
 	vp_create.sType                             = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	vp_create.viewportCount                     = 1;
 	vp_create.scissorCount                      = 1;
 
-	VkPipelineRasterizationStateCreateInfo rt_create = {0};
+	VkPipelineRasterizationStateCreateInfo rt_create = {};
 	rt_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rt_create.depthClampEnable                       = VK_FALSE;
 	rt_create.rasterizerDiscardEnable                = VK_FALSE;
@@ -508,7 +508,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	rt_create.depthBiasEnable                        = VK_FALSE;
 
 	// TODO: This should probably be enabled
-	VkPipelineMultisampleStateCreateInfo ms_create = {0};
+	VkPipelineMultisampleStateCreateInfo ms_create = {};
 	ms_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	ms_create.sampleShadingEnable                  = VK_FALSE;
 	ms_create.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
@@ -517,7 +517,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	ms_create.alphaToCoverageEnable                = VK_FALSE; // Optional
 	ms_create.alphaToOneEnable                     = VK_FALSE; // Optional
 
-	VkPipelineColorBlendAttachmentState cb_attachment = {0};
+	VkPipelineColorBlendAttachmentState cb_attachment = {};
 	cb_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	cb_attachment.blendEnable                         = VK_FALSE;
 	cb_attachment.blendEnable                         = VK_TRUE;
@@ -528,14 +528,14 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	cb_attachment.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
 	cb_attachment.alphaBlendOp                        = VK_BLEND_OP_ADD;
 
-	VkPipelineColorBlendStateCreateInfo cb_create = {0};
+	VkPipelineColorBlendStateCreateInfo cb_create = {};
 	cb_create.sType                               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	cb_create.logicOpEnable                       = VK_FALSE;
 	cb_create.attachmentCount                     = 1;
 	cb_create.pAttachments                        = &cb_attachment;
 
 	// TODO: setup uniforms
-	VkPipelineLayoutCreateInfo pl_layout = {0};
+	VkPipelineLayoutCreateInfo pl_layout = {};
 	pl_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pl_layout.setLayoutCount             = 0;       // Optional
 	pl_layout.pSetLayouts                = nullptr; // Optional
@@ -551,7 +551,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 
 	llog(LOG_DEBUG, "[PIPELINE] Pipeline layout successfully crated\n");
 
-	VkGraphicsPipelineCreateInfo pl_create = {0};
+	VkGraphicsPipelineCreateInfo pl_create = {};
 	pl_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pl_create.stageCount                   = 2;
 	pl_create.pStages                      = sh_stages;
@@ -594,7 +594,7 @@ bool destroy_pipeline(VulkanRuntimeInfo *vri) {
 }
 
 bool create_renderpass(VulkanRuntimeInfo *vri) {
-	VkAttachmentDescription cl_attachment = {0};
+	VkAttachmentDescription cl_attachment = {};
 	cl_attachment.format                  = vri->swapchain.format;
 	cl_attachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
 	cl_attachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -604,16 +604,16 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 	cl_attachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
 	cl_attachment.finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-	VkAttachmentReference cl_ref = {0};
+	VkAttachmentReference cl_ref = {};
 	cl_ref.attachment            = 0;
 	cl_ref.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpass = {0};
+	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments    = &cl_ref;
 
-	VkSubpassDependency sp_deps = {0};
+	VkSubpassDependency sp_deps = {};
 	sp_deps.srcSubpass          = VK_SUBPASS_EXTERNAL;
 	sp_deps.dstSubpass          = 0;
 	sp_deps.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -621,7 +621,7 @@ bool create_renderpass(VulkanRuntimeInfo *vri) {
 	sp_deps.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	sp_deps.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	VkRenderPassCreateInfo rp_create = {0};
+	VkRenderPassCreateInfo rp_create = {};
 	rp_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	rp_create.attachmentCount        = 1;
 	rp_create.pAttachments           = &cl_attachment;
@@ -657,7 +657,7 @@ bool create_framebuffers(VulkanRuntimeInfo *vri) {
 		VkImageView attachments[] = {
 		    vri->swapchain.views[i]};
 
-		VkFramebufferCreateInfo fb_create = {0};
+		VkFramebufferCreateInfo fb_create = {};
 		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		fb_create.renderPass              = vri->renderpass;
 		fb_create.attachmentCount         = 1;
@@ -695,7 +695,7 @@ bool create_command_pool(VulkanRuntimeInfo *vri) {
 
 	QueueFamilyIndicies qs = get_queue_families(vri->physical_dev, vri->surface);
 
-	VkCommandPoolCreateInfo pool_crate = {0};
+	VkCommandPoolCreateInfo pool_crate = {};
 	pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	pool_crate.queueFamilyIndex        = qs.graphics;
@@ -720,7 +720,7 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri) {
 
 bool create_command_buffer(VulkanRuntimeInfo *vri) {
 
-	VkCommandBufferAllocateInfo cmd_crate = {0};
+	VkCommandBufferAllocateInfo cmd_crate = {};
 	cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_crate.commandPool                 = vri->cmd_pool;
 	cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -737,10 +737,10 @@ bool create_command_buffer(VulkanRuntimeInfo *vri) {
 }
 
 bool create_sync_objects(VulkanRuntimeInfo *vri) {
-	VkSemaphoreCreateInfo sem_create = {0};
+	VkSemaphoreCreateInfo sem_create = {};
 	sem_create.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	VkFenceCreateInfo fnc_create = {0};
+	VkFenceCreateInfo fnc_create = {};
 	fnc_create.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fnc_create.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
 
@@ -784,45 +784,11 @@ bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
 }
 
 bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
-	VkBufferCreateInfo vb_create = {};
-	vb_create.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vb_create.size               = sizeof(__temp__data);
-	vb_create.usage              = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vb_create.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
-
-	auto res = vkCreateBuffer(vri->logical_dev, &vb_create, nullptr, &vri->vertex_buffer);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[VMEM] Could not create vertex buffer: %s\n", VkResult_str(res));
-		return false;
-	}
-
-	VkMemoryRequirements reqs;
-	vkGetBufferMemoryRequirements(vri->logical_dev, vri->vertex_buffer, &reqs);
-
-	VkMemoryAllocateInfo alloc_info = {};
-	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	alloc_info.allocationSize       = reqs.size;
-	alloc_info.memoryTypeIndex      = find_memory_type(reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri);
-
-	if (alloc_info.memoryTypeIndex == (uint32_t)(-1)) {
-		llog(LOG_ERROR, "[VMEM] Failed to allocate vertex buffer memory: %s\n", VkResult_str(res));
-		return false;
-	}
-
-	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, &vri->vertex_buffer_memory);
-	if (res != VK_SUCCESS) {
-		llog(LOG_ERROR, "[VMEM] Failed to allocate vertex buffer memory: %s\n", VkResult_str(res));
-		return false;
-	}
-
-	res = vkBindBufferMemory(vri->logical_dev, vri->vertex_buffer, vri->vertex_buffer_memory, 0);
-	if (res != VK_SUCCESS) {
-		llog(LOG_ERROR, "[VMEM] Failed to bind the vertex buffer to its memory: %s\n", VkResult_str(res));
-		return false;
-	}
+	VkDeviceSize buf_size               = sizeof(__temp__data);
+	create_buffer(buf_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &vri->vertex_buffer, &vri->vertex_buffer_memory);
 
 	void *data;
-	vkMapMemory(vri->logical_dev, vri->vertex_buffer_memory, 0, vb_create.size, 0, &data);
+	vkMapMemory(vri->logical_dev, vri->vertex_buffer_memory, 0, buf_size, 0, &data);
 	memcpy(data, __temp__data, sizeof(__temp__data));
 	vkUnmapMemory(vri->logical_dev, vri->vertex_buffer_memory);
 

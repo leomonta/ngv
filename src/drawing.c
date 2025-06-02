@@ -4,11 +4,10 @@
 #include "shader_data.h"
 #include "vkinit_utils.h"
 
-
 static uint32_t frame_index = 0;
 
 bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
-	VkCommandBufferBeginInfo beg_info = {0};
+	VkCommandBufferBeginInfo beg_info = {};
 	beg_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beg_info.flags                    = 0;       // Optional
 	beg_info.pInheritanceInfo         = nullptr; // Optional
@@ -19,7 +18,7 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 	}
 
 	VkClearValue          clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	VkRenderPassBeginInfo rp_info    = {0};
+	VkRenderPassBeginInfo rp_info    = {};
 	rp_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rp_info.renderPass               = vri->renderpass;
 	rp_info.framebuffer              = vri->swapchain.framebuffers[img_index];
@@ -31,7 +30,7 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 	vkCmdBeginRenderPass(vri->cmd_buff_mngn.cmd_buffer[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
 	{
 		vkCmdBindPipeline(vri->cmd_buff_mngn.cmd_buffer[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
-		VkViewport viewport = {0};
+		VkViewport viewport = {};
 		viewport.x          = 0.0f;
 		viewport.y          = 0.0f;
 		viewport.width      = (float)(vri->swapchain.extent.width);
@@ -40,13 +39,13 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 		viewport.maxDepth   = 1.0f;
 		vkCmdSetViewport(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &viewport);
 
-		VkRect2D scissor = {0};
+		VkRect2D scissor = {};
 		scissor.offset   = (VkOffset2D){0, 0};
 		scissor.extent   = vri->swapchain.extent;
 		vkCmdSetScissor(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &scissor);
 
 		VkBuffer     v_bufs[]  = {vri->vertex_buffer};
-		VkDeviceSize offsets[] = {0};
+		VkDeviceSize offsets[] = {};
 		vkCmdBindVertexBuffers(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, v_bufs, offsets);
 
 		vkCmdDraw(vri->cmd_buff_mngn.cmd_buffer[frame_index], sizeof(__temp__data) / sizeof(Vertex), 1, 0, 0);
@@ -85,7 +84,7 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	VkSemaphore          signal_sems[] = {vri->cmd_buff_mngn.render_finished[frame_index]};
 	VkSemaphore          wait_sems[]   = {vri->cmd_buff_mngn.image_available[frame_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	VkSubmitInfo         submit_info   = {0};
+	VkSubmitInfo         submit_info   = {};
 	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.waitSemaphoreCount     = 1;
 	submit_info.pWaitSemaphores        = wait_sems;
@@ -101,7 +100,7 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	}
 
 	VkSwapchainKHR   swapchains[]   = {vri->swapchain.swapchain};
-	VkPresentInfoKHR present_info   = {0};
+	VkPresentInfoKHR present_info   = {};
 	present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores    = signal_sems;

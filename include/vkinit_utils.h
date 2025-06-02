@@ -170,3 +170,17 @@ bool cleanup_swapchain(VulkanRuntimeInfo *vri);
  * @return a memory if successfull, else 0
  */
 uint32_t get_memory_type_index(VulkanRuntimeInfo *vri, const uint32_t typeFilter, const VkMemoryPropertyFlags properties);
+
+/**
+ * Creates and allocates a GPU side buffer
+ *
+ * @param[in] size the size in bytes of the buffer
+ * @param[in] usage an OR list of flags for what will it be used for
+ * @param[in] properties
+ * @param[in] vri the vulkan context to use
+ * @param[out] buffer where to put the created buffer handle
+ * @param[out] buffer_memory where to put the created buffer address
+ *
+ * @return a memory if successfull, else 0
+ */
+bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri, VkBuffer *buffer, VkDeviceMemory *buffer_memory);
