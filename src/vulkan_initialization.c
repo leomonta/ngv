@@ -4,9 +4,9 @@
 #include "logger.h"
 #include "shader_data.h"
 #include "utils.h"
+#include "vk_log.h"
 #include "vkinit_utils.h"
 #include "vulkan_memory.h"
-#include "vk_log.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -152,25 +152,25 @@ bool pick_physical_device(VulkanRuntimeInfo *vri) {
 
 bool create_logical_device(VulkanRuntimeInfo *vri) {
 
-	auto indices = get_queue_families(vri->physical_dev, vri->surface);
+	vri->device_queues_indices = get_queue_families(vri->physical_dev, vri->surface);
 
-	// if both GRAPHIC_QUEUE_INDEX and PRESENT_QUEUE_INDEX are set
-	if ((indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) {
+	// if GRAPHIC_QUEUE_INDEX, TRANSFER_QUEUE_INDEX, and PRESENT_QUEUE_INDEX are set
+	if ((vri->device_queues_indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) {
 		llog(LOG_ERROR, "[LOGICAL DEVICE] Could not satisfy the required queues necessary\n");
 		return false;
 	}
 
 	constexpr uint32_t num_needed_queues = 3;
 
-	uint32_t                needed_queues[num_needed_queues] = {indices.graphics, indices.present, indices.transfer};
+	uint32_t                needed_queues[num_needed_queues] = {vri->device_queues_indices.graphics, vri->device_queues_indices.present, vri->device_queues_indices.transfer};
 	VkDeviceQueueCreateInfo q_create[num_needed_queues]      = {};
 
-	// I need to ensure that if a family supports multiple queues
+	// I need to ensure that if a queue family supports multiple functionalities
 	// I only add it once to the logical device creation struct
 	uint32_t num_unique_queues = num_needed_queues;
 
 	// check if there is a duplice index
-	// if so replace it with the one at the end and consider the array 1 element smaller
+	// if so replace it with the one at the end of the list and consider the array 1 element smaller
 	// FIXME: this will bite me in the ass in the future, I've definitely made a mistake
 	for (uint32_t i = 0; i < num_unique_queues; ++i) {
 		for (uint32_t j = 0; j < i; ++j) {
@@ -217,11 +217,11 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	vkGetDeviceQueue(vri->logical_dev, indices.graphics, 0, &vri->device_queues.graphics);
-	vkGetDeviceQueue(vri->logical_dev, indices.present, 0, &vri->device_queues.present);
-	// vkGetDeviceQueue(vri->logical_dev, indices.compute, 0, &vri->device_queues.compure);
-	vkGetDeviceQueue(vri->logical_dev, indices.transfer, 0, &vri->device_queues.transfer);
-	// vkGetDeviceQueue(vri->logical_dev, indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
+	vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.graphics, 0, &vri->device_queues.graphics);
+	vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.present, 0, &vri->device_queues.present);
+	// vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.compute, 0, &vri->device_queues.compure);
+	vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.transfer, 0, &vri->device_queues.transfer);
+	// vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
 
 	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully created\n");
 
@@ -289,10 +289,9 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	sc_create.clipped                  = VK_TRUE;
 	sc_create.oldSwapchain             = VK_NULL_HANDLE;
 
-	QueueFamilyIndicies indices              = get_queue_families(vri->physical_dev, vri->surface);
-	uint32_t            queue_indices[] = {indices.graphics, indices.present, indices.transfer};
+	uint32_t            queue_indices[] = {vri->device_queues_indices.graphics, vri->device_queues_indices.present, vri->device_queues_indices.transfer};
 
-	if (indices.graphics != indices.present) {
+	if (vri->device_queues_indices.graphics != vri->device_queues_indices.present) {
 		sc_create.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
 		sc_create.queueFamilyIndexCount = 2;
 		sc_create.pQueueFamilyIndices   = queue_indices;
@@ -693,46 +692,73 @@ bool destroy_framebuffers(VulkanRuntimeInfo *vri) {
 
 bool create_command_pool(VulkanRuntimeInfo *vri) {
 
-	QueueFamilyIndicies qs = get_queue_families(vri->physical_dev, vri->surface);
+	VkCommandPoolCreateInfo g_pool_crate = {};
+	g_pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	g_pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	g_pool_crate.queueFamilyIndex        = vri->device_queues_indices.graphics;
 
-	VkCommandPoolCreateInfo pool_crate = {};
-	pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	pool_crate.queueFamilyIndex        = qs.graphics;
-
-	auto res = vkCreateCommandPool(vri->logical_dev, &pool_crate, nullptr, &vri->cmd_pool);
+	auto res = vkCreateCommandPool(vri->logical_dev, &g_pool_crate, nullptr, &vri->graphics_cmd_pool);
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the command pool: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the graphics command pool: %s\n", VkResult_str(res));
 		return false;
 	}
-	llog(LOG_DEBUG, "[COMMAND POOL] Command pool successfully created\n");
+	llog(LOG_DEBUG, "[COMMAND POOL] Graphics command pool successfully created\n");
+
+	VkCommandPoolCreateInfo t_pool_crate = {};
+	t_pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	t_pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	t_pool_crate.queueFamilyIndex        = vri->device_queues_indices.transfer;
+
+	res = vkCreateCommandPool(vri->logical_dev, &t_pool_crate, nullptr, &vri->transfer_cmd_pool);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the transfer command pool: %s\n", VkResult_str(res));
+		return false;
+	}
+	llog(LOG_DEBUG, "[COMMAND POOL] Transfer command pool successfully created\n");
+
 
 	return true;
 }
 
 bool destroy_command_pool(VulkanRuntimeInfo *vri) {
-	vkDestroyCommandPool(vri->logical_dev, vri->cmd_pool, nullptr);
+	vkDestroyCommandPool(vri->logical_dev, vri->graphics_cmd_pool, nullptr);
+	vkDestroyCommandPool(vri->logical_dev, vri->transfer_cmd_pool, nullptr);
 
-	llog(LOG_DEBUG, "[COMMAND POOL] Command pool successfully destroyed\n");
+	llog(LOG_DEBUG, "[COMMAND POOL] Command pools successfully destroyed\n");
 
 	return true;
 }
 
 bool create_command_buffer(VulkanRuntimeInfo *vri) {
 
-	VkCommandBufferAllocateInfo cmd_crate = {};
-	cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmd_crate.commandPool                 = vri->cmd_pool;
-	cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmd_crate.commandBufferCount          = MAX_CONCURRENT_FRAMES;
+	VkCommandBufferAllocateInfo g_cmd_crate = {};
+	g_cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	g_cmd_crate.commandPool                 = vri->graphics_cmd_pool;
+	g_cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	g_cmd_crate.commandBufferCount          = MAX_CONCURRENT_FRAMES;
 
-	auto res = vkAllocateCommandBuffers(vri->logical_dev, &cmd_crate, vri->cmd_buff_mngn.cmd_buffer);
+	auto res = vkAllocateCommandBuffers(vri->logical_dev, &g_cmd_crate, vri->graphic_cmd_synchro.cmd_buffer);
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the command buffer: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the graphics command buffer: %s\n", VkResult_str(res));
 		return false;
 	}
 
-	llog(LOG_DEBUG, "[COMMAND BUFFER] Command buffer successfully created\n");
+	llog(LOG_DEBUG, "[COMMAND BUFFER] Graphics command buffer successfully created\n");
+
+	VkCommandBufferAllocateInfo t_cmd_crate = {};
+	t_cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	t_cmd_crate.commandPool                 = vri->transfer_cmd_pool;
+	t_cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	t_cmd_crate.commandBufferCount          = 1;
+
+	res = vkAllocateCommandBuffers(vri->logical_dev, &t_cmd_crate, &vri->transfer_cmd_buff);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the transfer command buffer: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[COMMAND BUFFER] Transfer command buffer successfully created\n");
+
 	return true;
 }
 
@@ -746,19 +772,19 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
 
-		auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->cmd_buff_mngn.image_available[i]);
+		auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->graphic_cmd_synchro.image_available[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
 			return false;
 		}
 
-		res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->cmd_buff_mngn.render_finished[i]);
+		res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->graphic_cmd_synchro.render_finished[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
 			return false;
 		}
 
-		res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->cmd_buff_mngn.in_flight_fence[i]);
+		res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->graphic_cmd_synchro.in_flight_fence[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
 			return false;
@@ -773,9 +799,9 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
-		vkDestroyFence(vri->logical_dev, vri->cmd_buff_mngn.in_flight_fence[i], nullptr);
-		vkDestroySemaphore(vri->logical_dev, vri->cmd_buff_mngn.render_finished[i], nullptr);
-		vkDestroySemaphore(vri->logical_dev, vri->cmd_buff_mngn.image_available[i], nullptr);
+		vkDestroyFence(vri->logical_dev, vri->graphic_cmd_synchro.in_flight_fence[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->graphic_cmd_synchro.render_finished[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->graphic_cmd_synchro.image_available[i], nullptr);
 	}
 
 	llog(LOG_DEBUG, "[SYNCHRO] Synchronization objects successfully destroyed\n");
@@ -784,15 +810,23 @@ bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
 }
 
 bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
-	VkDeviceSize buf_size               = sizeof(__temp__data);
-	create_buffer(buf_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &vri->vertex_buffer, &vri->vertex_buffer_memory);
+	VkDeviceSize   buf_size = sizeof(__temp__data);
+	VkBuffer       buf_staging;
+	VkDeviceMemory buf_staging_mem;
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &buf_staging, &buf_staging_mem);
 
 	void *data;
-	vkMapMemory(vri->logical_dev, vri->vertex_buffer_memory, 0, buf_size, 0, &data);
+	auto res = vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
 	memcpy(data, __temp__data, sizeof(__temp__data));
-	vkUnmapMemory(vri->logical_dev, vri->vertex_buffer_memory);
+	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->vertex_buffer, &vri->vertex_buffer_memory);
+
+	copy_buffer(vri, buf_staging, vri->vertex_buffer, sizeof(__temp__data));
+
+	vkDestroyBuffer(vri->logical_dev, buf_staging, nullptr);
+	vkFreeMemory(vri->logical_dev, buf_staging_mem, nullptr);
 
 	return true;
 }

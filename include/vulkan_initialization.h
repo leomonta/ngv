@@ -68,7 +68,7 @@ typedef struct {
 	VkSemaphore     image_available[MAX_CONCURRENT_FRAMES];
 	VkSemaphore     render_finished[MAX_CONCURRENT_FRAMES];
 	VkFence         in_flight_fence[MAX_CONCURRENT_FRAMES];
-} CmdBufferAndCo;
+} GraphicsCmdSynchro;
 
 typedef struct {
 	GLFWwindow              *sys_window;
@@ -78,11 +78,14 @@ typedef struct {
 	VkPhysicalDevice         physical_dev;
 	VkDevice                 logical_dev;
 	VkRenderPass             renderpass;
-	VkCommandPool            cmd_pool;
+	VkCommandPool            graphics_cmd_pool;
+	VkCommandPool            transfer_cmd_pool;
+	VkCommandBuffer          transfer_cmd_buff;
 	VkBuffer                 vertex_buffer;
 	VkDeviceMemory           vertex_buffer_memory;
-	CmdBufferAndCo           cmd_buff_mngn;
+	GraphicsCmdSynchro       graphic_cmd_synchro;
 	QueuesInfo               device_queues;
+	QueueFamilyIndicies      device_queues_indices;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
 } VulkanRuntimeInfo;

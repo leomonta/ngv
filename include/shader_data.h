@@ -12,12 +12,12 @@ typedef struct {
 // how many fields there are in the vertex struct
 constexpr static size_t Vertex_attributes_num = 2;
 
-const static VkVertexInputBindingDescription Vertex_layout = {
+static const VkVertexInputBindingDescription Vertex_layout = {
     .binding   = 0,
     .stride    = sizeof(Vertex),
     .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
 
-const static VkVertexInputAttributeDescription Vertex_attribs[Vertex_attributes_num] = {
+static const VkVertexInputAttributeDescription Vertex_attribs[Vertex_attributes_num] = {
     {
      .binding  = 0,
      .location = 0,
@@ -32,7 +32,7 @@ const static VkVertexInputAttributeDescription Vertex_attribs[Vertex_attributes_
      }
 };
 
-const static Vertex __temp__data[] = {
+static const Vertex __temp__data[] = {
     {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
     {{0.5f, 0.5f},  {0.0f, 1.0f, 0.0f}},
     {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}

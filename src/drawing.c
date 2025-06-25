@@ -12,48 +12,48 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 	beg_info.flags                    = 0;       // Optional
 	beg_info.pInheritanceInfo         = nullptr; // Optional
 
-	auto res = vkBeginCommandBuffer(vri->cmd_buff_mngn.cmd_buffer[frame_index], &beg_info);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[COMMAND BUFFER] Could not begin recording the command buffer: %s\n", VkResult_str(res));
-	}
-
-	VkClearValue          clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	VkRenderPassBeginInfo rp_info    = {};
-	rp_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rp_info.renderPass               = vri->renderpass;
-	rp_info.framebuffer              = vri->swapchain.framebuffers[img_index];
-	rp_info.renderArea.offset        = (VkOffset2D){0, 0};
-	rp_info.renderArea.extent        = vri->swapchain.extent;
-	rp_info.clearValueCount          = 1;
-	rp_info.pClearValues             = &clearColor;
-
-	vkCmdBeginRenderPass(vri->cmd_buff_mngn.cmd_buffer[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+	auto res = vkBeginCommandBuffer(vri->graphic_cmd_synchro.cmd_buffer[frame_index], &beg_info);
 	{
-		vkCmdBindPipeline(vri->cmd_buff_mngn.cmd_buffer[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
-		VkViewport viewport = {};
-		viewport.x          = 0.0f;
-		viewport.y          = 0.0f;
-		viewport.width      = (float)(vri->swapchain.extent.width);
-		viewport.height     = (float)(vri->swapchain.extent.height);
-		viewport.minDepth   = 0.0f;
-		viewport.maxDepth   = 1.0f;
-		vkCmdSetViewport(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &viewport);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[COMMAND BUFFER] Could not begin recording the command buffer: %s\n", VkResult_str(res));
+		}
 
-		VkRect2D scissor = {};
-		scissor.offset   = (VkOffset2D){0, 0};
-		scissor.extent   = vri->swapchain.extent;
-		vkCmdSetScissor(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, &scissor);
+		VkClearValue          clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+		VkRenderPassBeginInfo rp_info    = {};
+		rp_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rp_info.renderPass               = vri->renderpass;
+		rp_info.framebuffer              = vri->swapchain.framebuffers[img_index];
+		rp_info.renderArea.offset        = (VkOffset2D){0, 0};
+		rp_info.renderArea.extent        = vri->swapchain.extent;
+		rp_info.clearValueCount          = 1;
+		rp_info.pClearValues             = &clearColor;
 
-		VkBuffer     v_bufs[]  = {vri->vertex_buffer};
-		VkDeviceSize offsets[] = {};
-		vkCmdBindVertexBuffers(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0, 1, v_bufs, offsets);
+		vkCmdBeginRenderPass(vri->graphic_cmd_synchro.cmd_buffer[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+		{
+			vkCmdBindPipeline(vri->graphic_cmd_synchro.cmd_buffer[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
+			VkViewport viewport = {};
+			viewport.x          = 0.0f;
+			viewport.y          = 0.0f;
+			viewport.width      = (float)(vri->swapchain.extent.width);
+			viewport.height     = (float)(vri->swapchain.extent.height);
+			viewport.minDepth   = 0.0f;
+			viewport.maxDepth   = 1.0f;
+			vkCmdSetViewport(vri->graphic_cmd_synchro.cmd_buffer[frame_index], 0, 1, &viewport);
 
-		vkCmdDraw(vri->cmd_buff_mngn.cmd_buffer[frame_index], sizeof(__temp__data) / sizeof(Vertex), 1, 0, 0);
+			VkRect2D scissor = {};
+			scissor.offset   = (VkOffset2D){0, 0};
+			scissor.extent   = vri->swapchain.extent;
+			vkCmdSetScissor(vri->graphic_cmd_synchro.cmd_buffer[frame_index], 0, 1, &scissor);
+
+			VkBuffer     v_bufs[]  = {vri->vertex_buffer};
+			VkDeviceSize offsets[] = {};
+			vkCmdBindVertexBuffers(vri->graphic_cmd_synchro.cmd_buffer[frame_index], 0, 1, v_bufs, offsets);
+
+			vkCmdDraw(vri->graphic_cmd_synchro.cmd_buffer[frame_index], sizeof(__temp__data) / sizeof(Vertex), 1, 0, 0);
+		}
+		vkCmdEndRenderPass(vri->graphic_cmd_synchro.cmd_buffer[frame_index]);
 	}
-
-	vkCmdEndRenderPass(vri->cmd_buff_mngn.cmd_buffer[frame_index]);
-
-	res = vkEndCommandBuffer(vri->cmd_buff_mngn.cmd_buffer[frame_index]);
+	res = vkEndCommandBuffer(vri->graphic_cmd_synchro.cmd_buffer[frame_index]);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAW CALL] Could not end the command buffer recording: %s\n", VkResult_str(res));
 	}
@@ -61,28 +61,29 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 }
 
 void draw_frame(VulkanRuntimeInfo *vri) {
-	vkWaitForFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
-	uint32_t img_index;
-	auto     vk_res = vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->cmd_buff_mngn.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+	vkWaitForFences(vri->logical_dev, 1, &vri->graphic_cmd_synchro.in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
 
-	if (vk_res == VK_ERROR_OUT_OF_DATE_KHR) {
+	uint32_t img_index;
+	auto     res = vkAcquireNextImageKHR(vri->logical_dev, vri->swapchain.swapchain, UINT64_MAX, vri->graphic_cmd_synchro.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+
+	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
 		re_create_swapchain(vri);
 		return;
-	} else if (vk_res == VK_SUBOPTIMAL_KHR) {
+	} else if (res == VK_SUBOPTIMAL_KHR) {
 		llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
-	} else if (vk_res != VK_SUCCESS) {
-		llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(vk_res));
+	} else if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(res));
 	}
 
-	vkResetFences(vri->logical_dev, 1, &vri->cmd_buff_mngn.in_flight_fence[frame_index]);
+	vkResetFences(vri->logical_dev, 1, &vri->graphic_cmd_synchro.in_flight_fence[frame_index]);
 
-	vkResetCommandBuffer(vri->cmd_buff_mngn.cmd_buffer[frame_index], 0);
+	vkResetCommandBuffer(vri->graphic_cmd_synchro.cmd_buffer[frame_index], 0);
 
 	record_cmd_buff(vri, img_index);
 
-	VkSemaphore          signal_sems[] = {vri->cmd_buff_mngn.render_finished[frame_index]};
-	VkSemaphore          wait_sems[]   = {vri->cmd_buff_mngn.image_available[frame_index]};
+	VkSemaphore          signal_sems[] = {vri->graphic_cmd_synchro.render_finished[frame_index]};
+	VkSemaphore          wait_sems[]   = {vri->graphic_cmd_synchro.image_available[frame_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	VkSubmitInfo         submit_info   = {};
 	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -92,11 +93,11 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	submit_info.pSignalSemaphores      = signal_sems;
 	submit_info.pWaitDstStageMask      = wait_stages;
 	submit_info.commandBufferCount     = 1;
-	submit_info.pCommandBuffers        = &vri->cmd_buff_mngn.cmd_buffer[frame_index];
+	submit_info.pCommandBuffers        = &vri->graphic_cmd_synchro.cmd_buffer[frame_index];
 
-	vk_res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->cmd_buff_mngn.in_flight_fence[frame_index]);
-	if (vk_res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(vk_res));
+	res = vkQueueSubmit(vri->device_queues.graphics, 1, &submit_info, vri->graphic_cmd_synchro.in_flight_fence[frame_index]);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
 	}
 
 	VkSwapchainKHR   swapchains[]   = {vri->swapchain.swapchain};

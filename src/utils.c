@@ -1,11 +1,5 @@
 #include "utils.h"
 
-#include "logger.h"
-
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
-
 bool at_bit(const bitfield bf, const unsigned char i) {
 
 	if (i >= (sizeof(bf) * 8)) {
@@ -82,7 +76,7 @@ uint32_t popcnt(bitfield bf) {
 	        : "=r"(cnt)
 	        : "r"(bf));
 #else
-	for (unsigned char i = 0; i < (sizeof(bitfield)); ++i) {
+	for (unsigned char i = 0; i < (sizeof(bitfield) * 2); ++i) {
 		if (at_bit(bf, i)) {
 			++cnt;
 		}

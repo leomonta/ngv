@@ -62,8 +62,8 @@ const char **get_required_extensions(uint32_t *count) {
 
 QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
-	QueueFamilyIndicies res = {};
-	uint32_t count = 0;
+	QueueFamilyIndicies res   = {};
+	uint32_t            count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 
 	if (count <= 0) {
@@ -78,27 +78,35 @@ QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR sur
 	for (uint32_t i = 0; i < count; ++i) {
 		auto qf = queues[i];
 
-		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT && at_bit(res.available_families, GRAPHIC_QUEUE_INDEX) == false) {
 			res.graphics = i;
 			set_bit(&res.available_families, GRAPHIC_QUEUE_INDEX);
 		}
 
-		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT && at_bit(res.available_families, COMPUTE_QUEUE_INDEX) == false) {
 			res.compute = i;
 			set_bit(&res.available_families, COMPUTE_QUEUE_INDEX);
 		}
 
-		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+		// set this only if it's not also a graphic queue
+		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT && !(qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) && at_bit(res.available_families, TRANSFER_QUEUE_INDEX) == false) {
 			res.transfer = i;
 			set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
 		}
 
-		VkBool32 support = false;
+		VkBool32 support = VK_FALSE;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
-		if (support) {
+		if (support && at_bit(res.available_families, PRESENT_QUEUE_INDEX) == false) {
 			res.present = i;
 			set_bit(&res.available_families, PRESENT_QUEUE_INDEX);
 		}
+	}
+
+	// any Queue family that supports graphics also supports transfers
+	// so if a transfer queue was not found I use the graphic one
+	if (at_bit(res.available_families, TRANSFER_QUEUE_INDEX) == false) {
+		res.transfer = res.graphics;
+		set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
 	}
 
 	free(queues);
@@ -512,20 +520,23 @@ bool cleanup_swapchain(VulkanRuntimeInfo *vri) {
 
 bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri, VkBuffer *buffer, VkDeviceMemory *buffer_memory) {
 
-	VkBufferCreateInfo vb_create = {};
-	vb_create.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vb_create.size               = size;
-	vb_create.usage              = usage;
-	vb_create.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
+	uint32_t           sharing_families[] = {vri->device_queues_indices.transfer, vri->device_queues_indices.graphics};
+	VkBufferCreateInfo buff_create        = {};
+	buff_create.sType                     = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buff_create.size                      = size;
+	buff_create.usage                     = usage;
+	buff_create.sharingMode               = VK_SHARING_MODE_CONCURRENT;
+	buff_create.queueFamilyIndexCount     = 2;
+	buff_create.pQueueFamilyIndices       = sharing_families;
 
-	auto res = vkCreateBuffer(vri->logical_dev, &vb_create, nullptr, buffer);
+	auto res = vkCreateBuffer(vri->logical_dev, &buff_create, nullptr, buffer);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[VMEM] Could not create vertex buffer: %s\n", VkResult_str(res));
 		return false;
 	}
 
 	VkMemoryRequirements reqs;
-	vkGetBufferMemoryRequirements(vri->logical_dev, vri->vertex_buffer, &reqs);
+	vkGetBufferMemoryRequirements(vri->logical_dev, *buffer, &reqs);
 
 	VkMemoryAllocateInfo alloc_info = {};
 	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -533,7 +544,6 @@ bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, cons
 	alloc_info.memoryTypeIndex      = find_memory_type(reqs.memoryTypeBits, properties, vri);
 
 	if (alloc_info.memoryTypeIndex == (uint32_t)(-1)) {
-		llog(LOG_ERROR, "[VMEM] Failed to allocate vertex buffer memory: %s\n", VkResult_str(res));
 		return false;
 	}
 
@@ -543,7 +553,7 @@ bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, cons
 		return false;
 	}
 
-	res = vkBindBufferMemory(vri->logical_dev, vri->vertex_buffer, vri->vertex_buffer_memory, 0);
+	res = vkBindBufferMemory(vri->logical_dev, *buffer, *buffer_memory, 0);
 	if (res != VK_SUCCESS) {
 		llog(LOG_ERROR, "[VMEM] Failed to bind the created buffer (%p) to its memory: %s\n", buffer, VkResult_str(res));
 		return false;
