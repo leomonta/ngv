@@ -49,7 +49,9 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 			VkDeviceSize offsets[] = {};
 			vkCmdBindVertexBuffers(vri->graphic_cmd_synchro.cmd_buffer[frame_index], 0, 1, v_bufs, offsets);
 
-			vkCmdDraw(vri->graphic_cmd_synchro.cmd_buffer[frame_index], sizeof(__temp__data) / sizeof(Vertex), 1, 0, 0);
+			vkCmdBindIndexBuffer(vri->graphic_cmd_synchro.cmd_buffer[frame_index], vri->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(vri->graphic_cmd_synchro.cmd_buffer[frame_index], sizeof(__temp__indicies) / sizeof(__temp__indicies[0]), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(vri->graphic_cmd_synchro.cmd_buffer[frame_index]);
 	}

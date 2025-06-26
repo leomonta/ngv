@@ -102,6 +102,10 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	if(!create_index_buffer(vri)) {
+		return false;
+	}
+
 	if(!create_sync_objects(vri)){
 		return false;
 	}
@@ -119,6 +123,8 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	detach_logger_callback(vri);
 #endif
 	destroy_sync_objects(vri);
+
+	destroy_index_buffer(vri);
 
 	destroy_vertex_buffer(vri);
 

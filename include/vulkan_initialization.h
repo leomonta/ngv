@@ -1,102 +1,6 @@
 #pragma once
 
-#include "config.h"
-#include "utils.h"
-
-#include <stddef.h>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <shaderc/shaderc.h>
-#include <vulkan/vulkan_core.h>
-
-typedef struct {
-	uint32_t graphics;
-	uint32_t compute;        // unused
-	uint32_t transfer;       // unused
-	uint32_t sparse_binding; // unused
-	uint32_t present;
-
-	bitfield available_families;
-} QueueFamilyIndicies;
-
-enum : char {
-	GRAPHIC_QUEUE_INDEX,
-	COMPUTE_QUEUE_INDEX,
-	TRANSFER_QUEUE_INDEX,
-	SPARSE_BINDING_QUEUE_INDEX,
-	PRESENT_QUEUE_INDEX,
-	QUEUE_ENUM_COUNT,
-};
-
-typedef enum : char {
-	VERTEX_SHADER,
-	TESSELATION_SHADER,
-	GEOMETRY_SHADER,
-	FRAGMENT_SHADER,
-	COMPUTE_SHADER,
-} ShaderKind;
-
-typedef struct {
-	VkQueue graphics;
-	VkQueue compute;        // unused
-	VkQueue transfer;       // unused
-	VkQueue sparse_binding; // unused
-	VkQueue present;
-} QueuesInfo;
-
-#define USED_QUEUE_FAMILIES sizeof(QueueFamilyIndicies) % sizeof(uint32_t) - 1;
-
-typedef struct {
-	VkSwapchainKHR swapchain;
-	uint32_t       buffers_count;
-	VkImage       *buffers;
-	VkImageView   *views;
-	VkFramebuffer *framebuffers;
-	VkExtent2D     extent;
-	VkFormat       format;
-} SwapchainInfo;
-
-typedef struct {
-	VkPipelineLayout layout;
-	VkPipeline       pipeline;
-} ShaderPipeline;
-
-// small hack since the value is defined at compile time
-typedef struct {
-	VkCommandBuffer cmd_buffer[MAX_CONCURRENT_FRAMES];
-	VkSemaphore     image_available[MAX_CONCURRENT_FRAMES];
-	VkSemaphore     render_finished[MAX_CONCURRENT_FRAMES];
-	VkFence         in_flight_fence[MAX_CONCURRENT_FRAMES];
-} GraphicsCmdSynchro;
-
-typedef struct {
-	GLFWwindow              *sys_window;
-	VkInstance               instance;
-	VkDebugUtilsMessengerEXT debug_logger;
-	VkSurfaceKHR             surface;
-	VkPhysicalDevice         physical_dev;
-	VkDevice                 logical_dev;
-	VkRenderPass             renderpass;
-	VkCommandPool            graphics_cmd_pool;
-	VkCommandPool            transfer_cmd_pool;
-	VkCommandBuffer          transfer_cmd_buff;
-	VkBuffer                 vertex_buffer;
-	VkDeviceMemory           vertex_buffer_memory;
-	GraphicsCmdSynchro       graphic_cmd_synchro;
-	QueuesInfo               device_queues;
-	QueueFamilyIndicies      device_queues_indices;
-	SwapchainInfo            swapchain;
-	ShaderPipeline           pipeline;
-} VulkanRuntimeInfo;
-
-typedef struct {
-	VkSurfaceCapabilitiesKHR capabilities;
-	VkSurfaceFormatKHR      *formats;
-	size_t                   formats_count;
-	VkPresentModeKHR        *modes;
-	size_t                   modes_count;
-} SwapchainDetails;
+#include "vulkan_objects.h"
 
 /**
  * returns if any requested validation layer is available
@@ -343,10 +247,28 @@ bool destroy_sync_objects(VulkanRuntimeInfo *vri);
 bool create_vertex_buffer(VulkanRuntimeInfo *vri);
 
 /**
- * Destroys the vertex buffer and sets it up with the default vertex layout
+ * Destroys the vertex buffer
  *
  * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
 bool destroy_vertex_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Create the index buffer and sets it up.
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_index_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the index buffer
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_index_buffer(VulkanRuntimeInfo *vri);

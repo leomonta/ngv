@@ -33,7 +33,12 @@ static const VkVertexInputAttributeDescription Vertex_attribs[Vertex_attributes_
 };
 
 static const Vertex __temp__data[] = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f},  {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f},  {0.0f, 0.0f, 1.0f}},
+    {{0.5f, -0.5f},  {1.0f, 1.0f, 1.0f}}
+};
+
+static const uint32_t __temp__indicies[] = {
+	0, 1, 2, 0, 3, 1
 };

@@ -289,7 +289,7 @@ bool create_swapchain(VulkanRuntimeInfo *vri) {
 	sc_create.clipped                  = VK_TRUE;
 	sc_create.oldSwapchain             = VK_NULL_HANDLE;
 
-	uint32_t            queue_indices[] = {vri->device_queues_indices.graphics, vri->device_queues_indices.present, vri->device_queues_indices.transfer};
+	uint32_t queue_indices[] = {vri->device_queues_indices.graphics, vri->device_queues_indices.present, vri->device_queues_indices.transfer};
 
 	if (vri->device_queues_indices.graphics != vri->device_queues_indices.present) {
 		sc_create.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
@@ -716,7 +716,6 @@ bool create_command_pool(VulkanRuntimeInfo *vri) {
 	}
 	llog(LOG_DEBUG, "[COMMAND POOL] Transfer command pool successfully created\n");
 
-
 	return true;
 }
 
@@ -816,14 +815,14 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &buf_staging, &buf_staging_mem);
 
 	void *data;
-	auto res = vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
-	memcpy(data, __temp__data, sizeof(__temp__data));
+	vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
+	memcpy(data, __temp__data, buf_size);
 	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
-	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->vertex_buffer, &vri->vertex_buffer_memory);
+	copy_buffer(vri, buf_staging, vri->vertex_buffer, buf_size);
 
-	copy_buffer(vri, buf_staging, vri->vertex_buffer, sizeof(__temp__data));
+	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 
 	vkDestroyBuffer(vri->logical_dev, buf_staging, nullptr);
 	vkFreeMemory(vri->logical_dev, buf_staging_mem, nullptr);
@@ -836,6 +835,37 @@ bool destroy_vertex_buffer(VulkanRuntimeInfo *vri) {
 	vkDestroyBuffer(vri->logical_dev, vri->vertex_buffer, nullptr);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully destroyed and freed\n");
+
+	return true;
+}
+
+bool create_index_buffer(VulkanRuntimeInfo *vri) {
+	VkDeviceSize   buf_size = sizeof(__temp__indicies);
+	VkBuffer       buf_staging;
+	VkDeviceMemory buf_staging_mem;
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &buf_staging, &buf_staging_mem);
+
+	void *data;
+	vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
+	memcpy(data, __temp__indicies, buf_size);
+	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
+
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->index_buffer, &vri->index_buffer_memory);
+	copy_buffer(vri, buf_staging, vri->index_buffer, buf_size);
+
+	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
+
+	vkDestroyBuffer(vri->logical_dev, buf_staging, nullptr);
+	vkFreeMemory(vri->logical_dev, buf_staging_mem, nullptr);
+
+	return true;
+}
+
+bool destroy_index_buffer(VulkanRuntimeInfo *vri) {
+	vkFreeMemory(vri->logical_dev, vri->index_buffer_memory, nullptr);
+	vkDestroyBuffer(vri->logical_dev, vri->index_buffer, nullptr);
+
+	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully destroyed and freed\n");
 
 	return true;
 }
