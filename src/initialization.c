@@ -58,61 +58,72 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 
 	vri->sys_window = init_window();
 
-	if(!create_surface(vri)){
+	if (!create_surface(vri)) {
 		return false;
 	}
 
-	if(!pick_physical_device(vri)){
+	if (!pick_physical_device(vri)) {
 		return false;
 	}
 
-	if(!create_logical_device(vri)){
+	if (!create_logical_device(vri)) {
 		return false;
 	}
 
-	if(!create_swapchain(vri)){
-		return false;
-	}
-	
-	if(!create_image_views(vri)){
+	if (!create_swapchain(vri)) {
 		return false;
 	}
 
-	if(!create_renderpass(vri)){
+	if (!create_image_views(vri)) {
 		return false;
 	}
 
-	if(!create_pipeline(vri)){
+	if (!create_renderpass(vri)) {
 		return false;
 	}
 
-	if(!create_framebuffers(vri)){
+	if (!create_pipeline(vri)) {
 		return false;
 	}
 
-	if(!create_command_pool(vri)){
+	if (!create_framebuffers(vri)) {
 		return false;
 	}
 
-	if(!create_command_buffer(vri)){
+	if (!create_command_pool(vri)) {
 		return false;
 	}
 
-	if(!create_vertex_buffer(vri)) {
+	if (!create_command_buffer(vri)) {
 		return false;
 	}
 
-	if(!create_index_buffer(vri)) {
+	if (!create_vertex_buffer(vri)) {
 		return false;
 	}
 
-	if(!create_sync_objects(vri)){
+	if (!create_index_buffer(vri)) {
 		return false;
 	}
-	
+
+	if (!create_uniform_buffer(vri)) {
+		return false;
+	}
+
+	if (!create_descriptor_pool(vri)) {
+		return false;
+	}
+
+	if (!create_descriptor_set(vri)) {
+		return false;
+	}
+
+	if (!create_sync_objects(vri)) {
+		return false;
+	}
+
 	llog(LOG_DEBUG, "[NGV] Finished creating vulkan objects\n");
 	return true;
-
 }
 
 void terminate_vulkan(VulkanRuntimeInfo *vri) {
@@ -123,6 +134,10 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	detach_logger_callback(vri);
 #endif
 	destroy_sync_objects(vri);
+
+	destroy_descriptor_pool(vri);
+
+	destroy_uniform_buffer(vri);
 
 	destroy_index_buffer(vri);
 
@@ -147,5 +162,4 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	destroy_instance(vri);
 
 	llog(LOG_DEBUG, "[NGV] Finished destroying vulkan objects\n");
-
 }

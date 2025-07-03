@@ -2,6 +2,10 @@
 
 #include "logger.h"
 #include "vulkan/vulkan_core.h"
+
+#include <cglm/cglm.h>
+#include <string.h>
+
 uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri) {
 
 	VkPhysicalDeviceMemoryProperties phy_props;
@@ -42,6 +46,28 @@ bool copy_buffer(VulkanRuntimeInfo *vri, VkBuffer src, VkBuffer dst, VkDeviceSiz
 	vkQueueWaitIdle(vri->device_queues.transfer);
 
 	vkResetCommandBuffer(vri->transfer_cmd_buff, 0);
+
+	return true;
+}
+
+bool update_uniform_buffer(VulkanRuntimeInfo *vri, uint32_t frame_index) {
+
+	MVP mvp = {
+	    GLM_MAT4_IDENTITY_INIT,
+	    GLM_MAT4_IDENTITY_INIT,
+	    GLM_MAT4_IDENTITY_INIT,
+	};
+
+	glm_mat4_copy(mvp.model, GLM_MAT4_IDENTITY);
+	glm_rotate(mvp.model, glm_rad(1), ((vec3){0.0f, 0.0f, 1.0f}));
+
+	glm_lookat((float[]){2.0f, 2.0f, 2.0f}, (float[]){0.0f, 0.0f, 0.0f}, (float[]){0.0f, 0.0f, 1.0f}, mvp.view);
+
+	glm_perspective(glm_rad(100.f), (float)vri->swapchain.extent.width / (float)vri->swapchain.extent.height, 0.0f, 1.0f, mvp.proj);
+
+	mvp.proj[1][1] *= -1;
+
+	memcpy(vri->frame_data_objects.uniform_buff_mapped[frame_index], &mvp, sizeof(mvp));
 
 	return true;
 }

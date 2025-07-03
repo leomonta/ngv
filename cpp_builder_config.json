@@ -25,6 +25,12 @@
 		"linker_args": "rcs"
 	},
 
+	"no-asan": {
+		"compiler_args": "-g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion",
+		"linker_args": "rcs"
+	},
+
+
 	"release": {
 		"compiler_args": "-Ofast -DNDEBUG -std=c23",
 		"linker_args": "rcs"

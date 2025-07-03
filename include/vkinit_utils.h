@@ -174,12 +174,12 @@ uint32_t get_memory_type_index(VulkanRuntimeInfo *vri, const uint32_t typeFilter
 /**
  * Creates and allocates a GPU side buffer
  *
- * @param[in] size the size in bytes of the buffer
- * @param[in] usage an OR list of flags for what will it be used for
- * @param[in] properties
- * @param[in] vri the vulkan context to use
- * @param[out] buffer where to put the created buffer handle
- * @param[out] buffer_memory where to put the created buffer address
+ * @param[in] `size` the size in bytes of the buffer
+ * @param[in] `usage` an OR list of flags for what will it be used for
+ * @param[in] `properties`
+ * @param[in] `vri` the vulkan context to use
+ * @param[out] `buffer` where to put the created buffer handle
+ * @param[out] `buffer_memory` where to put the created buffer address
  *
  * @return a memory if successfull, else 0
  */

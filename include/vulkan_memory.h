@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_initialization.h"
+#include "vulkan_objects.h"
 
 uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri);
 
@@ -12,5 +12,15 @@ uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags prope
  * @param[in] `src` the source buffer
  * @param[in] `dst` the destination biffer
  * @param[in] `size` the amount of bytes to copy
+ *
+ * @return if the operation was successful
  */
 bool copy_buffer(VulkanRuntimeInfo *vri, VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
+/**
+ * @param[in] `vri` the vulkan context to use
+ * @param[in] `frame_index` which uniform buffer to update
+ * 
+ * @return if the operation was successful
+ */
+bool update_uniform_buffer(VulkanRuntimeInfo *vri, uint32_t frame_index);

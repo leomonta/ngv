@@ -56,17 +56,22 @@ typedef struct {
 } SwapchainInfo;
 
 typedef struct {
-	VkPipelineLayout layout;
-	VkPipeline       pipeline;
+	VkPipelineLayout      layout;
+	VkPipeline            pipeline;
+	VkDescriptorSetLayout descriptor_set_layout;
 } ShaderPipeline;
 
 // small hack since the value is defined at compile time
 typedef struct {
-	VkCommandBuffer cmd_buffer[MAX_CONCURRENT_FRAMES];
+	VkCommandBuffer cmd_buff[MAX_CONCURRENT_FRAMES];
 	VkSemaphore     image_available[MAX_CONCURRENT_FRAMES];
 	VkSemaphore     render_finished[MAX_CONCURRENT_FRAMES];
 	VkFence         in_flight_fence[MAX_CONCURRENT_FRAMES];
-} GraphicsCmdSynchro;
+	VkDescriptorSet descriptor_sets[MAX_CONCURRENT_FRAMES];
+	VkBuffer        uniform_buff[MAX_CONCURRENT_FRAMES];
+	VkDeviceMemory  uniform_buff_mem[MAX_CONCURRENT_FRAMES];
+	void           *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
+} FrameData;
 
 typedef struct {
 	VkSurfaceCapabilitiesKHR capabilities;
@@ -92,15 +97,15 @@ typedef struct {
 	VkRenderPass             renderpass;
 	VkCommandPool            graphics_cmd_pool;
 	VkCommandPool            transfer_cmd_pool;
+	VkDescriptorPool         descriptor_pool;
 	VkCommandBuffer          transfer_cmd_buff;
-	VkBuffer                 index_buffer;
-	VkDeviceMemory           index_buffer_memory;
-	VkBuffer                 vertex_buffer;
-	VkDeviceMemory           vertex_buffer_memory;
-	GraphicsCmdSynchro       graphic_cmd_synchro;
+	VkBuffer                 index_buff;
+	VkDeviceMemory           index_buff_mem;
+	VkBuffer                 vertex_buff;
+	VkDeviceMemory           vertex_buff_mem;
+	FrameData                frame_data_objects;
 	QueuesInfo               device_queues;
 	QueueFamilyIndicies      device_queues_indices;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
-	MVP                      mvp_matrix;
 } VulkanRuntimeInfo;

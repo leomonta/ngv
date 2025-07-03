@@ -211,6 +211,42 @@ bool create_command_pool(VulkanRuntimeInfo *vri);
 bool destroy_command_pool(VulkanRuntimeInfo *vri);
 
 /**
+ * Creates a descriptor pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_descriptor_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the descriptor pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_descriptor_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates a descriptor set
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_descriptor_set(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the descriptor set
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_descriptor_set(VulkanRuntimeInfo *vri);
+
+/**
  * Creates the command buffer
  *
  * @param[in] `vri` the vulkan context to use
@@ -272,3 +308,21 @@ bool create_index_buffer(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_index_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Create the uniform buffer and sets it up.
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_uniform_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the uniform buffer
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_uniform_buffer(VulkanRuntimeInfo *vri);

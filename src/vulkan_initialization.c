@@ -502,7 +502,8 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	rt_create.rasterizerDiscardEnable                = VK_FALSE;
 	rt_create.polygonMode                            = VK_POLYGON_MODE_FILL; // TODO: settable wireframe here
 	rt_create.lineWidth                              = 1.0f;
-	rt_create.cullMode                               = VK_CULL_MODE_BACK_BIT;
+	rt_create.cullMode                               = VK_CULL_MODE_NONE;
+	//rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
 	rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
 	rt_create.depthBiasEnable                        = VK_FALSE;
 
@@ -533,15 +534,35 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	cb_create.attachmentCount                     = 1;
 	cb_create.pAttachments                        = &cb_attachment;
 
-	// TODO: setup uniforms
+	VkDescriptorSetLayoutBinding dsl_binding = {};
+	dsl_binding.binding                      = 0;
+	dsl_binding.descriptorType               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	dsl_binding.descriptorCount              = 1;
+	dsl_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT;
+	dsl_binding.pImmutableSamplers           = nullptr; // Optional
+
+	VkDescriptorSetLayoutCreateInfo layout_info = {};
+	layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layout_info.bindingCount                    = 1;
+	layout_info.pBindings                       = &dsl_binding;
+
+	auto res = vkCreateDescriptorSetLayout(vri->logical_dev, &layout_info, nullptr, &vri->pipeline.descriptor_set_layout);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPLINE] Failed to create descriptor set layout!: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[PIPELINE] Uniform descroptor set layout successfully created\n");
+
 	VkPipelineLayoutCreateInfo pl_layout = {};
 	pl_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pl_layout.setLayoutCount             = 0;       // Optional
-	pl_layout.pSetLayouts                = nullptr; // Optional
+	pl_layout.setLayoutCount             = 1;
+	pl_layout.pSetLayouts                = &vri->pipeline.descriptor_set_layout;
 	pl_layout.pushConstantRangeCount     = 0;       // Optional
 	pl_layout.pPushConstantRanges        = nullptr; // Optional
 
-	auto res = vkCreatePipelineLayout(vri->logical_dev, &pl_layout, nullptr, &vri->pipeline.layout);
+	res = vkCreatePipelineLayout(vri->logical_dev, &pl_layout, nullptr, &vri->pipeline.layout);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
@@ -569,7 +590,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.pipeline);
 
 	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline: %s\n", VkResult_str(res));
+		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
 		return false;
 	}
 
@@ -586,6 +607,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 bool destroy_pipeline(VulkanRuntimeInfo *vri) {
 	vkDestroyPipeline(vri->logical_dev, vri->pipeline.pipeline, nullptr);
 	vkDestroyPipelineLayout(vri->logical_dev, vri->pipeline.layout, nullptr);
+	vkDestroyDescriptorSetLayout(vri->logical_dev, vri->pipeline.descriptor_set_layout, nullptr);
 
 	llog(LOG_DEBUG, "[PIPELINE] Graphics pipeline successfully destroyed\n");
 
@@ -728,6 +750,78 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
+bool create_descriptor_pool(VulkanRuntimeInfo *vri) {
+	VkDescriptorPoolSize pool_sz = {};
+	pool_sz.type                 = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sz.descriptorCount      = MAX_CONCURRENT_FRAMES;
+
+	VkDescriptorPoolCreateInfo dp_info = {};
+	dp_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	dp_info.poolSizeCount              = 1;
+	dp_info.pPoolSizes                 = &pool_sz;
+	dp_info.maxSets                    = MAX_CONCURRENT_FRAMES;
+
+	auto res = vkCreateDescriptorPool(vri->logical_dev, &dp_info, nullptr, &vri->descriptor_pool);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DESCRIPTOR POOL] Could not create the descriptor pool: %s\n", VkResult_str(res));
+	}
+	llog(LOG_DEBUG, "[DESCRIPTOR POOL] Descriptor pool successfully created\n");
+
+	return true;
+}
+
+bool destroy_descriptor_pool(VulkanRuntimeInfo *vri) {
+	vkDestroyDescriptorPool(vri->logical_dev, vri->descriptor_pool, nullptr);
+
+	llog(LOG_DEBUG, "[DESCRIPTOR POOL] Descriptor pool successfully destroyed\n");
+	return true;
+}
+
+bool create_descriptor_set(VulkanRuntimeInfo *vri) {
+
+	VkDescriptorSetLayout layouts[MAX_CONCURRENT_FRAMES];
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
+		layouts[i] = vri->pipeline.descriptor_set_layout;
+	}
+
+	VkDescriptorSetAllocateInfo alloc_info = {};
+	alloc_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	alloc_info.descriptorPool              = vri->descriptor_pool;
+	alloc_info.descriptorSetCount          = MAX_CONCURRENT_FRAMES;
+	alloc_info.pSetLayouts                 = layouts;
+
+	auto res = vkAllocateDescriptorSets(vri->logical_dev, &alloc_info, vri->frame_data_objects.descriptor_sets);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DESCRIPTOR SET] Could not crate descriptor set: %s\n", VkResult_str(res));
+	}
+
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
+		VkDescriptorBufferInfo db_info = {};
+		db_info.buffer                 = vri->frame_data_objects.uniform_buff[i];
+		db_info.offset                 = 0;
+		db_info.range                  = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet desc_write = {};
+		desc_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		desc_write.dstSet               = vri->frame_data_objects.descriptor_sets[i];
+		desc_write.dstBinding           = 0;
+		desc_write.dstArrayElement      = 0;
+		desc_write.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		desc_write.descriptorCount      = 1;
+		desc_write.pBufferInfo          = &db_info;
+		desc_write.pImageInfo           = nullptr; // Optional
+		desc_write.pTexelBufferView     = nullptr; // Optional
+
+		vkUpdateDescriptorSets(vri->logical_dev, 1, &desc_write, 0, nullptr);
+	}
+
+	llog(LOG_DEBUG, "[DESCRIPTOR SET] Descriptor set successfully created\n");
+
+	return true;
+}
+
 bool create_command_buffer(VulkanRuntimeInfo *vri) {
 
 	VkCommandBufferAllocateInfo g_cmd_crate = {};
@@ -736,7 +830,7 @@ bool create_command_buffer(VulkanRuntimeInfo *vri) {
 	g_cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	g_cmd_crate.commandBufferCount          = MAX_CONCURRENT_FRAMES;
 
-	auto res = vkAllocateCommandBuffers(vri->logical_dev, &g_cmd_crate, vri->graphic_cmd_synchro.cmd_buffer);
+	auto res = vkAllocateCommandBuffers(vri->logical_dev, &g_cmd_crate, vri->frame_data_objects.cmd_buff);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the graphics command buffer: %s\n", VkResult_str(res));
 		return false;
@@ -771,19 +865,19 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
 
-		auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->graphic_cmd_synchro.image_available[i]);
+		auto res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->frame_data_objects.image_available[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
 			return false;
 		}
 
-		res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->graphic_cmd_synchro.render_finished[i]);
+		res = vkCreateSemaphore(vri->logical_dev, &sem_create, nullptr, &vri->frame_data_objects.render_finished[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
 			return false;
 		}
 
-		res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->graphic_cmd_synchro.in_flight_fence[i]);
+		res = vkCreateFence(vri->logical_dev, &fnc_create, nullptr, &vri->frame_data_objects.in_flight_fence[i]);
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
 			return false;
@@ -798,9 +892,9 @@ bool create_sync_objects(VulkanRuntimeInfo *vri) {
 bool destroy_sync_objects(VulkanRuntimeInfo *vri) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
-		vkDestroyFence(vri->logical_dev, vri->graphic_cmd_synchro.in_flight_fence[i], nullptr);
-		vkDestroySemaphore(vri->logical_dev, vri->graphic_cmd_synchro.render_finished[i], nullptr);
-		vkDestroySemaphore(vri->logical_dev, vri->graphic_cmd_synchro.image_available[i], nullptr);
+		vkDestroyFence(vri->logical_dev, vri->frame_data_objects.in_flight_fence[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->frame_data_objects.render_finished[i], nullptr);
+		vkDestroySemaphore(vri->logical_dev, vri->frame_data_objects.image_available[i], nullptr);
 	}
 
 	llog(LOG_DEBUG, "[SYNCHRO] Synchronization objects successfully destroyed\n");
@@ -819,8 +913,8 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 	memcpy(data, __temp__data, buf_size);
 	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->vertex_buffer, &vri->vertex_buffer_memory);
-	copy_buffer(vri, buf_staging, vri->vertex_buffer, buf_size);
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->vertex_buff, &vri->vertex_buff_mem);
+	copy_buffer(vri, buf_staging, vri->vertex_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 
@@ -831,8 +925,8 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 }
 
 bool destroy_vertex_buffer(VulkanRuntimeInfo *vri) {
-	vkFreeMemory(vri->logical_dev, vri->vertex_buffer_memory, nullptr);
-	vkDestroyBuffer(vri->logical_dev, vri->vertex_buffer, nullptr);
+	vkFreeMemory(vri->logical_dev, vri->vertex_buff_mem, nullptr);
+	vkDestroyBuffer(vri->logical_dev, vri->vertex_buff, nullptr);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully destroyed and freed\n");
 
@@ -850,8 +944,8 @@ bool create_index_buffer(VulkanRuntimeInfo *vri) {
 	memcpy(data, __temp__indicies, buf_size);
 	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->index_buffer, &vri->index_buffer_memory);
-	copy_buffer(vri, buf_staging, vri->index_buffer, buf_size);
+	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->index_buff, &vri->index_buff_mem);
+	copy_buffer(vri, buf_staging, vri->index_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
 
@@ -862,10 +956,35 @@ bool create_index_buffer(VulkanRuntimeInfo *vri) {
 }
 
 bool destroy_index_buffer(VulkanRuntimeInfo *vri) {
-	vkFreeMemory(vri->logical_dev, vri->index_buffer_memory, nullptr);
-	vkDestroyBuffer(vri->logical_dev, vri->index_buffer, nullptr);
+	vkFreeMemory(vri->logical_dev, vri->index_buff_mem, nullptr);
+	vkDestroyBuffer(vri->logical_dev, vri->index_buff, nullptr);
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully destroyed and freed\n");
+
+	return true;
+}
+
+bool create_uniform_buffer(VulkanRuntimeInfo *vri) {
+	VkDeviceSize sz = sizeof(MVP);
+
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
+		create_buffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &vri->frame_data_objects.uniform_buff[i], &vri->frame_data_objects.uniform_buff_mem[i]);
+
+		vkMapMemory(vri->logical_dev, vri->frame_data_objects.uniform_buff_mem[i], 0, sz, 0, &vri->frame_data_objects.uniform_buff_mapped[i]);
+	}
+	llog(LOG_DEBUG, "[VMEM] Uniform buffers objects successfully created and allocated\n");
+
+	return true;
+}
+
+bool destroy_uniform_buffer(VulkanRuntimeInfo *vri) {
+
+	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
+		vkDestroyBuffer(vri->logical_dev, vri->frame_data_objects.uniform_buff[i], nullptr);
+		vkFreeMemory(vri->logical_dev, vri->frame_data_objects.uniform_buff_mem[i], nullptr);
+	}
+
+	llog(LOG_DEBUG, "[VMEM] Uniform buffer objects successfully destroyed and freed\n");
 
 	return true;
 }
