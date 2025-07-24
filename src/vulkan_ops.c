@@ -1,4 +1,4 @@
-#include "drawing.h"
+#include "vulkan_ops.h"
 
 #include "logger.h"
 #include "shader_data.h"
@@ -31,7 +31,7 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 
 		vkCmdBeginRenderPass(vri->frame_data_objects.cmd_buff[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
-			vkCmdBindPipeline(vri->frame_data_objects.cmd_buff[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.pipeline);
+			vkCmdBindPipeline(vri->frame_data_objects.cmd_buff[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.object);
 			VkViewport viewport = {};
 			viewport.x          = 0.0f;
 			viewport.y          = 0.0f;
@@ -120,4 +120,145 @@ void draw_frame(VulkanRuntimeInfo *vri) {
 	vkQueuePresentKHR(vri->device_queues.present, &present_info);
 
 	frame_index = (frame_index + 1) % MAX_CONCURRENT_FRAMES;
+}
+
+bool begin_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCommandBuffer *command_buffer) {
+
+	VkCommandPool cp;
+
+	switch (kind) {
+
+	case GRAPHIC_QUEUE:
+		cp = vri->graphics_cmd_pool;
+		break;
+
+	case TRANSFER_QUEUE:
+		cp = vri->transfer_cmd_pool;
+		break;
+
+	case COMPUTE_QUEUE:
+	case SPARSE_BINDING_QUEUE:
+	case PRESENT_QUEUE:
+	case QUEUE_ENUM_COUNT:
+		return false;
+		break;
+	}
+
+	VkCommandBufferAllocateInfo alloc_info = {};
+	alloc_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	alloc_info.commandPool                 = cp;
+	alloc_info.commandBufferCount          = 1;
+
+	vkAllocateCommandBuffers(vri->logical_dev, &alloc_info, command_buffer);
+
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(*command_buffer, &begin_info);
+
+	return true;
+}
+
+bool end_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCommandBuffer command_buffer) {
+
+	VkCommandPool cp;
+	VkQueue       q;
+
+	switch (kind) {
+
+	case GRAPHIC_QUEUE:
+		cp = vri->graphics_cmd_pool;
+		q  = vri->device_queues.graphics;
+		break;
+
+	case TRANSFER_QUEUE:
+		cp = vri->transfer_cmd_pool;
+		q  = vri->device_queues.transfer;
+		break;
+
+	case COMPUTE_QUEUE:
+	case SPARSE_BINDING_QUEUE:
+	case PRESENT_QUEUE:
+	case QUEUE_ENUM_COUNT:
+		return false;
+		break;
+	}
+
+	vkEndCommandBuffer(command_buffer);
+
+	VkSubmitInfo submit_info       = {};
+	submit_info.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers    = &command_buffer;
+
+	vkQueueSubmit(q, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(q);
+
+	vkFreeCommandBuffers(vri->logical_dev, cp, 1, &command_buffer);
+
+	return true;
+}
+
+void transition_image_layout(VulkanRuntimeInfo *vri, VkImage image, VkFormat format, VkImageLayout from_layout, VkImageLayout to_layout) {
+	VkCommandBuffer cmd_buff;
+	begin_temporary_command_buffer(vri, GRAPHIC_QUEUE, &cmd_buff);
+
+	VkImageMemoryBarrier barrier            = {};
+	barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.oldLayout                       = from_layout;
+	barrier.newLayout                       = to_layout;
+	barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image                           = image;
+	barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel   = 0;
+	barrier.subresourceRange.levelCount     = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount     = 1;
+	barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+
+	VkPipelineStageFlags src_stage = {};
+	VkPipelineStageFlags dst_stage = {};
+
+	if (from_layout == VK_IMAGE_LAYOUT_UNDEFINED && to_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		src_stage             = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dst_stage             = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	} else if (from_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && to_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		src_stage             = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		dst_stage             = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	} else {
+		llog(LOG_ERROR, "[IMAGE] Unsuppoerted layout transition.\n");
+		return;
+	}
+
+	vkCmdPipelineBarrier(cmd_buff, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	end_temporary_command_buffer(vri, GRAPHIC_QUEUE, cmd_buff);
+
+}
+
+void copy_buffer_to_image(VulkanRuntimeInfo *vri, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+	VkCommandBuffer cmd_buff;
+	begin_temporary_command_buffer(vri, GRAPHIC_QUEUE, &cmd_buff);
+
+	VkBufferImageCopy region               = {};
+	region.bufferOffset                    = 0;
+	region.bufferRowLength                 = 0;
+	region.bufferImageHeight               = 0;
+	region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel       = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount     = 1;
+	region.imageOffset                     = (VkOffset3D){0, 0, 0};
+	region.imageExtent                     = (VkExtent3D){width, height, 1};
+
+	vkCmdCopyBufferToImage(cmd_buff, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	end_temporary_command_buffer(vri, GRAPHIC_QUEUE, cmd_buff);
 }

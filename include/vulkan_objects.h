@@ -10,14 +10,14 @@
 #include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
-enum : char {
-	GRAPHIC_QUEUE_INDEX,
-	COMPUTE_QUEUE_INDEX,
-	TRANSFER_QUEUE_INDEX,
-	SPARSE_BINDING_QUEUE_INDEX,
-	PRESENT_QUEUE_INDEX,
+typedef enum : char {
+	GRAPHIC_QUEUE,
+	COMPUTE_QUEUE,
+	TRANSFER_QUEUE,
+	SPARSE_BINDING_QUEUE,
+	PRESENT_QUEUE,
 	QUEUE_ENUM_COUNT,
-};
+} QueueKind;
 
 typedef enum : char {
 	VERTEX_SHADER,
@@ -57,7 +57,7 @@ typedef struct {
 
 typedef struct {
 	VkPipelineLayout      layout;
-	VkPipeline            pipeline;
+	VkPipeline            object;
 	VkDescriptorSetLayout descriptor_set_layout;
 } ShaderPipeline;
 
@@ -72,6 +72,12 @@ typedef struct {
 	VkDeviceMemory  uniform_buff_mem[MAX_CONCURRENT_FRAMES];
 	void           *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
 } FrameData;
+
+typedef struct {
+	size_t         count;
+	VkImage        objects[TEMP_ARRAY_SIZE];
+	VkDeviceMemory memory[TEMP_ARRAY_SIZE];
+} TextureData;
 
 typedef struct {
 	VkSurfaceCapabilitiesKHR capabilities;
@@ -104,6 +110,7 @@ typedef struct {
 	VkBuffer                 vertex_buff;
 	VkDeviceMemory           vertex_buff_mem;
 	FrameData                frame_data_objects;
+	TextureData              textures;
 	QueuesInfo               device_queues;
 	QueueFamilyIndicies      device_queues_indices;
 	SwapchainInfo            swapchain;

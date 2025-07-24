@@ -7,8 +7,11 @@
 #include "vk_log.h"
 #include "vkinit_utils.h"
 #include "vulkan_memory.h"
+#include "vulkan_ops.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include <errno.h>
+#include <stb/stb_image.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -155,7 +158,7 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	vri->device_queues_indices = get_queue_families(vri->physical_dev, vri->surface);
 
 	// if GRAPHIC_QUEUE_INDEX, TRANSFER_QUEUE_INDEX, and PRESENT_QUEUE_INDEX are set
-	if ((vri->device_queues_indices.available_families & (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) != (GRAPHIC_QUEUE_INDEX | PRESENT_QUEUE_INDEX | TRANSFER_QUEUE_INDEX)) {
+	if ((vri->device_queues_indices.available_families & (GRAPHIC_QUEUE | PRESENT_QUEUE | TRANSFER_QUEUE)) != (GRAPHIC_QUEUE | PRESENT_QUEUE | TRANSFER_QUEUE)) {
 		llog(LOG_ERROR, "[LOGICAL DEVICE] Could not satisfy the required queues necessary\n");
 		return false;
 	}
@@ -503,7 +506,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	rt_create.polygonMode                            = VK_POLYGON_MODE_FILL; // TODO: settable wireframe here
 	rt_create.lineWidth                              = 1.0f;
 	rt_create.cullMode                               = VK_CULL_MODE_NONE;
-	//rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
+	// rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
 	rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
 	rt_create.depthBiasEnable                        = VK_FALSE;
 
@@ -587,7 +590,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	pl_create.renderPass                   = vri->renderpass;
 	pl_create.subpass                      = 0;
 
-	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.pipeline);
+	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.object);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
@@ -605,7 +608,7 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 }
 
 bool destroy_pipeline(VulkanRuntimeInfo *vri) {
-	vkDestroyPipeline(vri->logical_dev, vri->pipeline.pipeline, nullptr);
+	vkDestroyPipeline(vri->logical_dev, vri->pipeline.object, nullptr);
 	vkDestroyPipelineLayout(vri->logical_dev, vri->pipeline.layout, nullptr);
 	vkDestroyDescriptorSetLayout(vri->logical_dev, vri->pipeline.descriptor_set_layout, nullptr);
 
@@ -747,6 +750,52 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri) {
 
 	llog(LOG_DEBUG, "[COMMAND POOL] Command pools successfully destroyed\n");
 
+	return true;
+}
+
+bool create_texture_image(VulkanRuntimeInfo *vri) {
+	int          tex_width, tex_height, tex_channels;
+	stbi_uc     *pixels   = stbi_load("this_is_snake.jpg", &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	VkDeviceSize image_sz = (unsigned long)tex_width * (unsigned long)tex_height * 4;
+
+	if (!pixels) {
+		llog(LOG_FATAL, "[TEXTURE] Failed to load texture image.");
+	}
+
+	VkBuffer       staging;
+	VkDeviceMemory staging_mem;
+
+	create_buffer(vri, image_sz, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging, &staging_mem);
+
+	void *data;
+	vkMapMemory(vri->logical_dev, staging_mem, 0, image_sz, 0, &data);
+	memcpy(data, pixels, image_sz);
+	vkUnmapMemory(vri->logical_dev, staging_mem);
+
+	stbi_image_free(pixels);
+
+	create_image(vri, (uint32_t)tex_width, (uint32_t)tex_height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, &vri->textures.objects[0], &vri->textures.memory[0]);
+
+	transition_image_layout(vri, vri->textures.objects[0], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copy_buffer_to_image(vri, staging, vri->textures.objects[0], (uint32_t)tex_width, (uint32_t)tex_height);
+	transition_image_layout(vri, vri->textures.objects[0], VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	llog(LOG_DEBUG, "[TEXTURE] Command pools successfully created\n");
+
+	vkDestroyBuffer(vri->logical_dev, staging, nullptr);
+	vkFreeMemory(vri->logical_dev, staging_mem, nullptr);
+
+	return true;
+}
+
+bool destroy_texture_image(VulkanRuntimeInfo *vri) {
+
+	for (size_t i = 0; i < vri->textures.count; ++i) {
+		vkDestroyImage(vri->logical_dev, vri->textures.objects[i], nullptr);
+		vkFreeMemory(vri->logical_dev, vri->textures.memory[i], nullptr);
+	}
+
+	llog(LOG_DEBUG, "[TEXTURE] Command pools successfully destroyed\n");
 	return true;
 }
 
@@ -906,14 +955,14 @@ bool create_vertex_buffer(VulkanRuntimeInfo *vri) {
 	VkDeviceSize   buf_size = sizeof(__temp__data);
 	VkBuffer       buf_staging;
 	VkDeviceMemory buf_staging_mem;
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &buf_staging, &buf_staging_mem);
+	create_buffer(vri, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
 
 	void *data;
 	vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
 	memcpy(data, __temp__data, buf_size);
 	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->vertex_buff, &vri->vertex_buff_mem);
+	create_buffer(vri, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vri->vertex_buff, &vri->vertex_buff_mem);
 	copy_buffer(vri, buf_staging, vri->vertex_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
@@ -937,14 +986,14 @@ bool create_index_buffer(VulkanRuntimeInfo *vri) {
 	VkDeviceSize   buf_size = sizeof(__temp__indicies);
 	VkBuffer       buf_staging;
 	VkDeviceMemory buf_staging_mem;
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &buf_staging, &buf_staging_mem);
+	create_buffer(vri, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
 
 	void *data;
 	vkMapMemory(vri->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
 	memcpy(data, __temp__indicies, buf_size);
 	vkUnmapMemory(vri->logical_dev, buf_staging_mem);
 
-	create_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri, &vri->index_buff, &vri->index_buff_mem);
+	create_buffer(vri, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vri->index_buff, &vri->index_buff_mem);
 	copy_buffer(vri, buf_staging, vri->index_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
@@ -968,7 +1017,7 @@ bool create_uniform_buffer(VulkanRuntimeInfo *vri) {
 	VkDeviceSize sz = sizeof(MVP);
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
-		create_buffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vri, &vri->frame_data_objects.uniform_buff[i], &vri->frame_data_objects.uniform_buff_mem[i]);
+		create_buffer(vri, sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vri->frame_data_objects.uniform_buff[i], &vri->frame_data_objects.uniform_buff_mem[i]);
 
 		vkMapMemory(vri->logical_dev, vri->frame_data_objects.uniform_buff_mem[i], 0, sz, 0, &vri->frame_data_objects.uniform_buff_mapped[i]);
 	}

@@ -78,35 +78,35 @@ QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR sur
 	for (uint32_t i = 0; i < count; ++i) {
 		auto qf = queues[i];
 
-		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT && at_bit(res.available_families, GRAPHIC_QUEUE_INDEX) == false) {
+		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT && at_bit(res.available_families, GRAPHIC_QUEUE) == false) {
 			res.graphics = i;
-			set_bit(&res.available_families, GRAPHIC_QUEUE_INDEX);
+			set_bit(&res.available_families, GRAPHIC_QUEUE);
 		}
 
-		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT && at_bit(res.available_families, COMPUTE_QUEUE_INDEX) == false) {
+		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT && at_bit(res.available_families, COMPUTE_QUEUE) == false) {
 			res.compute = i;
-			set_bit(&res.available_families, COMPUTE_QUEUE_INDEX);
+			set_bit(&res.available_families, COMPUTE_QUEUE);
 		}
 
 		// set this only if it's not also a graphic queue
-		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT && !(qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) && at_bit(res.available_families, TRANSFER_QUEUE_INDEX) == false) {
+		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT && !(qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) && at_bit(res.available_families, TRANSFER_QUEUE) == false) {
 			res.transfer = i;
-			set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
+			set_bit(&res.available_families, TRANSFER_QUEUE);
 		}
 
 		VkBool32 support = VK_FALSE;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
-		if (support && at_bit(res.available_families, PRESENT_QUEUE_INDEX) == false) {
+		if (support && at_bit(res.available_families, PRESENT_QUEUE) == false) {
 			res.present = i;
-			set_bit(&res.available_families, PRESENT_QUEUE_INDEX);
+			set_bit(&res.available_families, PRESENT_QUEUE);
 		}
 	}
 
 	// any Queue family that supports graphics also supports transfers
 	// so if a transfer queue was not found I use the graphic one
-	if (at_bit(res.available_families, TRANSFER_QUEUE_INDEX) == false) {
+	if (at_bit(res.available_families, TRANSFER_QUEUE) == false) {
 		res.transfer = res.graphics;
-		set_bit(&res.available_families, TRANSFER_QUEUE_INDEX);
+		set_bit(&res.available_families, TRANSFER_QUEUE);
 	}
 
 	free(queues);
@@ -180,11 +180,11 @@ VkPhysicalDevice filter_suitable_devices(const VkPhysicalDevice *devs, const siz
 		// ----
 		// necessary stuff
 
-		if (!at_bit(qfam.available_families, GRAPHIC_QUEUE_INDEX)) {
+		if (!at_bit(qfam.available_families, GRAPHIC_QUEUE)) {
 			continue;
 		}
 
-		if (!at_bit(qfam.available_families, PRESENT_QUEUE_INDEX)) {
+		if (!at_bit(qfam.available_families, PRESENT_QUEUE)) {
 			continue;
 		}
 
@@ -518,7 +518,7 @@ bool cleanup_swapchain(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri, VkBuffer *buffer, VkDeviceMemory *buffer_memory) {
+bool create_buffer(VulkanRuntimeInfo *vri, const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *buffer_memory) {
 
 	uint32_t           sharing_families[] = {vri->device_queues_indices.transfer, vri->device_queues_indices.graphics};
 	VkBufferCreateInfo buff_create        = {};
@@ -558,6 +558,48 @@ bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, cons
 		llog(LOG_ERROR, "[VMEM] Failed to bind the created buffer (%p) to its memory: %s\n", buffer, VkResult_str(res));
 		return false;
 	}
+
+	return true;
+}
+
+bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *texture, VkDeviceMemory *texture_mem) {
+
+	VkImageCreateInfo img_info = {};
+	img_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	img_info.imageType         = VK_IMAGE_TYPE_2D;
+	img_info.extent.width      = (uint32_t)(width);
+	img_info.extent.height     = (uint32_t)(height);
+	img_info.extent.depth      = 1;
+	img_info.mipLevels         = 1;
+	img_info.arrayLayers       = 1;
+	img_info.format            = format;
+	img_info.tiling            = tiling;
+	img_info.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+	img_info.usage             = usage;
+	img_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
+	img_info.samples           = VK_SAMPLE_COUNT_1_BIT;
+	img_info.flags             = 0; // Optional
+
+	auto res = vkCreateImage(vri->logical_dev, &img_info, nullptr, texture);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[TEXTURE] Could not create texture: %s\n", VkResult_str(res));
+	}
+
+	VkMemoryRequirements mem_req;
+	vkGetImageMemoryRequirements(vri->logical_dev, *texture, &mem_req);
+
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize       = mem_req.size;
+	alloc_info.memoryTypeIndex      = find_memory_type(mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri);
+
+	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, texture_mem);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[TEXTURE] Could not allocate memory for the texture: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	vkBindImageMemory(vri->logical_dev, *texture, *texture_mem, 0);
 
 	return true;
 }

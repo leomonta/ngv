@@ -174,13 +174,29 @@ uint32_t get_memory_type_index(VulkanRuntimeInfo *vri, const uint32_t typeFilter
 /**
  * Creates and allocates a GPU side buffer
  *
+ * @param[in] `vri` the vulkan context to use
  * @param[in] `size` the size in bytes of the buffer
  * @param[in] `usage` an OR list of flags for what will it be used for
  * @param[in] `properties`
- * @param[in] `vri` the vulkan context to use
  * @param[out] `buffer` where to put the created buffer handle
  * @param[out] `buffer_memory` where to put the created buffer address
  *
  * @return a memory if successfull, else 0
  */
-bool create_buffer(const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri, VkBuffer *buffer, VkDeviceMemory *buffer_memory);
+bool create_buffer(VulkanRuntimeInfo *vri, const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *buffer_memory);
+
+/**
+ * Creates and allocates a GPU side buffer
+ *
+ * @param[in] `vri` the vulkan context to use
+ * @param[in] `width` the width in pixels of the buffer
+ * @param[in] `height` the height in pixels of the buffer
+ * @param[in] `format` the rgb format of the image
+ * @param[in] `tiling` optimal of linear tiling
+ * @param[in] `usage` an OR list of flags for what will it be used for
+ * @param[out] `texture` where to put the created buffer handle
+ * @param[out] `texture_mem` where to put the created buffer address
+ *
+ * @return a memory if successfull, else 0
+ */
+bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *texture, VkDeviceMemory *texture_mem);

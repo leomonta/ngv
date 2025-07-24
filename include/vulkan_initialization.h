@@ -211,40 +211,22 @@ bool create_command_pool(VulkanRuntimeInfo *vri);
 bool destroy_command_pool(VulkanRuntimeInfo *vri);
 
 /**
- * Creates a descriptor pool
+ * Creates the texture images
  *
  * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool create_descriptor_pool(VulkanRuntimeInfo *vri);
+bool create_texture_image(VulkanRuntimeInfo *vri);
 
 /**
- * Destroys the descriptor pool
+ * Destroys the texture images
  *
  * @param[in] `vri` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool destroy_descriptor_pool(VulkanRuntimeInfo *vri);
-
-/**
- * Creates a descriptor set
- *
- * @param[in] `vri` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool create_descriptor_set(VulkanRuntimeInfo *vri);
-
-/**
- * Destroys the descriptor set
- *
- * @param[in] `vri` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool destroy_descriptor_set(VulkanRuntimeInfo *vri);
+bool destroy_texture_image(VulkanRuntimeInfo *vri);
 
 /**
  * Creates the command buffer
@@ -326,3 +308,40 @@ bool create_uniform_buffer(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_uniform_buffer(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates a descriptor pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_descriptor_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the descriptor pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_descriptor_pool(VulkanRuntimeInfo *vri);
+
+/**
+ * Creates a descriptor set
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_descriptor_set(VulkanRuntimeInfo *vri);
+
+/**
+ * Destroys the descriptor set
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_descriptor_set(VulkanRuntimeInfo *vri);
+
