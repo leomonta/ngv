@@ -7,10 +7,11 @@
 typedef struct {
 	vec2 position;
 	vec3 color;
+	vec2 texture_coordinates;
 } Vertex;
 
 // how many fields there are in the vertex struct
-constexpr static size_t Vertex_attributes_num = 2;
+constexpr static size_t Vertex_attributes_num = 3;
 
 static const VkVertexInputBindingDescription Vertex_layout = {
     .binding   = 0,
@@ -29,16 +30,21 @@ static const VkVertexInputAttributeDescription Vertex_attribs[Vertex_attributes_
      .location = 1,
      .format   = VK_FORMAT_R32G32B32_SFLOAT,
      .offset   = offsetof(Vertex,               color),
+     },
+    {
+     .binding  = 0,
+     .location = 2,
+     .format   = VK_FORMAT_R32G32_SFLOAT,
+     .offset   = offsetof(Vertex,                                 texture_coordinates),
      }
 };
 
 static const Vertex __temp__data[] = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f},  {0.0f, 0.0f, 1.0f}},
-    {{0.5f, -0.5f},  {1.0f, 1.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f},  {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{0.5f, -0.5f},  {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}
 };
 
 static const uint32_t __temp__indicies[] = {
-	0, 1, 2, 0, 3, 1
-};
+    0, 1, 2, 0, 3, 1};

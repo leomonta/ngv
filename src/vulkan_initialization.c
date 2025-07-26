@@ -207,23 +207,22 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 
 	// TODO: define a TU for extension management
 	VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_extension = {
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
-		.customBorderColors = VK_TRUE,
-		.customBorderColorWithoutFormat = VK_FALSE,
-		.pNext = nullptr
-	};
+	    .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
+	    .customBorderColors             = VK_TRUE,
+	    .customBorderColorWithoutFormat = VK_FALSE,
+	    .pNext                          = nullptr};
 
 	VkPhysicalDeviceFeatures dev_features = {};
 	dev_features.samplerAnisotropy        = VK_TRUE;
 
-	VkDeviceCreateInfo dev_create         = {};
-	dev_create.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	dev_create.pQueueCreateInfos          = q_create;
-	dev_create.queueCreateInfoCount       = num_unique_queues;
-	dev_create.pEnabledFeatures           = &dev_features;
-	dev_create.ppEnabledExtensionNames    = PHYSICAL_EXTENSIONS;
-	dev_create.enabledExtensionCount      = PHYSICAL_EXTENSIONS_COUNT;
-	dev_create.pNext = &custom_border_extension;
+	VkDeviceCreateInfo dev_create      = {};
+	dev_create.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	dev_create.pQueueCreateInfos       = q_create;
+	dev_create.queueCreateInfoCount    = num_unique_queues;
+	dev_create.pEnabledFeatures        = &dev_features;
+	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
+	dev_create.enabledExtensionCount   = PHYSICAL_EXTENSIONS_COUNT;
+	dev_create.pNext                   = &custom_border_extension;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
@@ -555,17 +554,26 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	cb_create.attachmentCount                     = 1;
 	cb_create.pAttachments                        = &cb_attachment;
 
-	VkDescriptorSetLayoutBinding dsl_binding = {};
-	dsl_binding.binding                      = 0;
-	dsl_binding.descriptorType               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	dsl_binding.descriptorCount              = 1;
-	dsl_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT;
-	dsl_binding.pImmutableSamplers           = nullptr; // Optional
+	VkDescriptorSetLayoutBinding mvp_binding = {};
+	mvp_binding.binding                      = 0;
+	mvp_binding.descriptorType               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvp_binding.descriptorCount              = 1;
+	mvp_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT;
+	mvp_binding.pImmutableSamplers           = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding sampl_binding = {};
+	sampl_binding.binding                      = 1;
+	sampl_binding.descriptorType               = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	sampl_binding.descriptorCount              = 1;
+	sampl_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT;
+	sampl_binding.pImmutableSamplers           = nullptr;
+
+	VkDescriptorSetLayoutBinding bindings[2] = {mvp_binding, sampl_binding};
 
 	VkDescriptorSetLayoutCreateInfo layout_info = {};
 	layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layout_info.bindingCount                    = 1;
-	layout_info.pBindings                       = &dsl_binding;
+	layout_info.bindingCount                    = 2;
+	layout_info.pBindings                       = bindings;
 
 	auto res = vkCreateDescriptorSetLayout(vri->logical_dev, &layout_info, nullptr, &vri->pipeline.descriptor_set_layout);
 
@@ -892,14 +900,18 @@ bool destroy_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index) {
 }
 
 bool create_descriptor_pool(VulkanRuntimeInfo *vri) {
-	VkDescriptorPoolSize pool_sz = {};
-	pool_sz.type                 = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_sz.descriptorCount      = MAX_CONCURRENT_FRAMES;
+	VkDescriptorPoolSize pool_sz[2] = {};
+	pool_sz[0]                      = (VkDescriptorPoolSize){};
+	pool_sz[0].type                 = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sz[0].descriptorCount      = MAX_CONCURRENT_FRAMES;
+	pool_sz[1]                      = (VkDescriptorPoolSize){};
+	pool_sz[1].type                 = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	pool_sz[1].descriptorCount      = MAX_CONCURRENT_FRAMES;
 
 	VkDescriptorPoolCreateInfo dp_info = {};
 	dp_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	dp_info.poolSizeCount              = 1;
-	dp_info.pPoolSizes                 = &pool_sz;
+	dp_info.poolSizeCount              = 2;
+	dp_info.pPoolSizes                 = pool_sz;
 	dp_info.maxSets                    = MAX_CONCURRENT_FRAMES;
 
 	auto res = vkCreateDescriptorPool(vri->logical_dev, &dp_info, nullptr, &vri->descriptor_pool);
@@ -944,18 +956,32 @@ bool create_descriptor_set(VulkanRuntimeInfo *vri) {
 		db_info.offset                 = 0;
 		db_info.range                  = VK_WHOLE_SIZE;
 
-		VkWriteDescriptorSet desc_write = {};
-		desc_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		desc_write.dstSet               = vri->frame_data_objects.descriptor_sets[i];
-		desc_write.dstBinding           = 0;
-		desc_write.dstArrayElement      = 0;
-		desc_write.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		desc_write.descriptorCount      = 1;
-		desc_write.pBufferInfo          = &db_info;
-		desc_write.pImageInfo           = nullptr; // Optional
-		desc_write.pTexelBufferView     = nullptr; // Optional
+		VkDescriptorImageInfo img_info = {};
+		img_info.imageLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		img_info.imageView             = vri->textures.views[0];
+		img_info.sampler               = vri->textures.samplers[0];
 
-		vkUpdateDescriptorSets(vri->logical_dev, 1, &desc_write, 0, nullptr);
+		VkWriteDescriptorSet desc_write[2] = {};
+		desc_write[0].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		desc_write[0].dstSet               = vri->frame_data_objects.descriptor_sets[i];
+		desc_write[0].dstBinding           = 0;
+		desc_write[0].dstArrayElement      = 0;
+		desc_write[0].descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		desc_write[0].descriptorCount      = 1;
+		desc_write[0].pBufferInfo          = &db_info;
+		desc_write[0].pImageInfo           = nullptr; // Optional
+		desc_write[0].pTexelBufferView     = nullptr; // Optional
+
+		desc_write[1].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		desc_write[1].dstSet               = vri->frame_data_objects.descriptor_sets[i];
+		desc_write[1].dstBinding           = 1;
+		desc_write[1].dstArrayElement      = 0;
+		desc_write[1].descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		desc_write[1].descriptorCount      = 1;
+		desc_write[1].pImageInfo          = &img_info;
+		desc_write[1].pTexelBufferView     = nullptr; // Optional
+
+		vkUpdateDescriptorSets(vri->logical_dev, 2, desc_write, 0, nullptr);
 	}
 
 	llog(LOG_DEBUG, "[DESCRIPTOR SET] Descriptor set successfully created\n");
