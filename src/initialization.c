@@ -37,7 +37,7 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 
 	// need to be sure
 	*vri = (VulkanRuntimeInfo){};
-	vri->textures.count = TEMP_ARRAY_SIZE;
+	vri->textures.count = 1;
 
 	llog(LOG_DEBUG, "[NGV] Started creating vulkan objects\n");
 
@@ -103,6 +103,14 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
+	if (!create_texture_view(vri, 0)) {
+		return false;
+	}
+
+	if (!create_texture_sampler(vri, 0)) {
+		return false;
+	}
+
 	if (!create_vertex_buffer(vri)) {
 		return false;
 	}
@@ -147,7 +155,11 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	destroy_index_buffer(vri);
 
 	destroy_vertex_buffer(vri);
+
+	destroy_texture_sampler(vri, 0);
 	
+	destroy_texture_view(vri, 0);
+
 	destroy_texture_image(vri);
 
 	destroy_command_pool(vri);

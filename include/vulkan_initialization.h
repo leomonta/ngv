@@ -212,6 +212,7 @@ bool destroy_command_pool(VulkanRuntimeInfo *vri);
 
 /**
  * Creates the texture images
+ * Should redo this function to create a texture on demand and return its index
  *
  * @param[in] `vri` the vulkan context to use
  *
@@ -227,6 +228,12 @@ bool create_texture_image(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_texture_image(VulkanRuntimeInfo *vri);
+
+bool create_texture_view(VulkanRuntimeInfo *vri, uint32_t index);
+bool destroy_texture_view(VulkanRuntimeInfo *vri, uint32_t index);
+
+bool create_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index);
+bool destroy_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index);
 
 /**
  * Creates the command buffer

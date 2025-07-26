@@ -77,6 +77,8 @@ typedef struct {
 	size_t         count;
 	VkImage        objects[TEMP_ARRAY_SIZE];
 	VkDeviceMemory memory[TEMP_ARRAY_SIZE];
+	VkImageView    views[TEMP_ARRAY_SIZE];    // need something more flexible than one view per texture
+	VkSampler      samplers[TEMP_ARRAY_SIZE]; // need something more flexible than one view per texture
 } TextureData;
 
 typedef struct {

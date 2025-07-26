@@ -21,10 +21,17 @@
 #	include <stdio.h>
 #endif
 
-const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME};
 constexpr unsigned       PHYSICAL_EXTENSIONS_COUNT    = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
 constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
 constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
+#define MIKU_FLOAT4_SRGB_COLOR {0.5254902f, 0.8078431f, 0.7960784f, 1.f}
+
+constexpr VkSamplerCustomBorderColorCreateInfoEXT miku_border_color = {
+    .sType             = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
+    .format            = VK_FORMAT_R8G8B8A8_SRGB,
+    .customBorderColor = {MIKU_FLOAT4_SRGB_COLOR},
+    .pNext             = nullptr};
 
 bool create_instance(VulkanRuntimeInfo *vri) {
 
@@ -198,14 +205,25 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		q_create[i].pQueuePriorities = &q_priority;
 	}
 
+	// TODO: define a TU for extension management
+	VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_extension = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
+		.customBorderColors = VK_TRUE,
+		.customBorderColorWithoutFormat = VK_FALSE,
+		.pNext = nullptr
+	};
+
 	VkPhysicalDeviceFeatures dev_features = {};
-	VkDeviceCreateInfo       dev_create   = {};
+	dev_features.samplerAnisotropy        = VK_TRUE;
+
+	VkDeviceCreateInfo dev_create         = {};
 	dev_create.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	dev_create.pQueueCreateInfos          = q_create;
 	dev_create.queueCreateInfoCount       = num_unique_queues;
 	dev_create.pEnabledFeatures           = &dev_features;
 	dev_create.ppEnabledExtensionNames    = PHYSICAL_EXTENSIONS;
 	dev_create.enabledExtensionCount      = PHYSICAL_EXTENSIONS_COUNT;
+	dev_create.pNext = &custom_border_extension;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
@@ -796,6 +814,80 @@ bool destroy_texture_image(VulkanRuntimeInfo *vri) {
 	}
 
 	llog(LOG_DEBUG, "[TEXTURE] Command pools successfully destroyed\n");
+	return true;
+}
+
+bool create_texture_view(VulkanRuntimeInfo *vri, uint32_t index) {
+
+	VkImageViewCreateInfo vw_create           = {};
+	vw_create.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	vw_create.image                           = vri->textures.objects[index];
+	vw_create.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+	vw_create.format                          = VK_FORMAT_R8G8B8A8_SRGB;
+	vw_create.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+	vw_create.subresourceRange.baseMipLevel   = 0;
+	vw_create.subresourceRange.levelCount     = 1;
+	vw_create.subresourceRange.baseArrayLayer = 0;
+	vw_create.subresourceRange.layerCount     = 1;
+
+	auto res = vkCreateImageView(vri->logical_dev, &vw_create, nullptr, &vri->textures.views[index]);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[TEXTURE] Could not create texture views: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[TEXTURE] Image views successfully created\n");
+
+	return true;
+}
+
+bool destroy_texture_view(VulkanRuntimeInfo *vri, uint32_t index) {
+
+	vkDestroyImageView(vri->logical_dev, vri->textures.views[index], nullptr);
+
+	return true;
+}
+
+bool create_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index) {
+
+	VkPhysicalDeviceProperties properties = {};
+	vkGetPhysicalDeviceProperties(vri->physical_dev, &properties);
+
+	VkSamplerCreateInfo samplerInfo     = {};
+	samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter               = VK_FILTER_LINEAR;
+	samplerInfo.minFilter               = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+	samplerInfo.anisotropyEnable        = VK_TRUE;
+	samplerInfo.maxAnisotropy           = properties.limits.maxSamplerAnisotropy;
+	samplerInfo.pNext                   = &miku_border_color;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable           = VK_FALSE;
+	samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias              = 0.0f;
+	samplerInfo.minLod                  = 0.0f;
+	samplerInfo.maxLod                  = 0.0f;
+
+	auto res = vkCreateSampler(vri->logical_dev, &samplerInfo, nullptr, &vri->textures.samplers[index]);
+	if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[TEXTURE] Could not create image sampler: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	return true;
+}
+bool destroy_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index) {
+
+	vkDestroySampler(vri->logical_dev, vri->textures.samplers[index], nullptr);
+
 	return true;
 }
 
