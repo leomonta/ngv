@@ -1,9 +1,9 @@
 #pragma once
 
+#include "cglm_proxy.h"
 #include "config.h"
 #include "utils.h"
 
-#include <cglm/cglm.h>
 #include <stddef.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -96,6 +96,46 @@ typedef struct {
 } MVP;
 
 typedef struct {
+	VkImage        image;
+	VkDeviceMemory memory;
+	VkImageView    view;
+} DepthBufferObjects;
+
+// static objects that will rarely be changed
+typedef struct {
+	GLFWwindow              *sys_window;
+	VkInstance               instance;
+	VkDebugUtilsMessengerEXT debug_logger;
+	VkSurfaceKHR             surface;
+	VkPhysicalDevice         physical_dev;
+	VkDevice                 logical_dev;
+} VulkanApplicationInfos;
+
+// infrastructure that may be changed
+typedef struct {
+	VkRenderPass        renderpass;
+	VkCommandPool       graphics_cmd_pool;
+	VkCommandPool       transfer_cmd_pool;
+	VkDescriptorPool    descriptor_pool;
+	QueuesInfo          device_queues;
+	QueueFamilyIndicies device_queues_indices;
+	SwapchainInfo       swapchain;
+	ShaderPipeline      pipeline;
+	DepthBufferObjects  depth_objects;
+} VulkanRederingObjects;
+
+// data that needs to be modified per call or quite often
+typedef struct {
+	VkBuffer        index_buff;
+	VkDeviceMemory  index_buff_mem;
+	VkBuffer        vertex_buff;
+	VkDeviceMemory  vertex_buff_mem;
+	VkCommandBuffer transfer_cmd_buff;
+	FrameData       frame_data_objects;
+	TextureData     textures;
+} VulkanRenderingResources;
+
+typedef struct {
 	GLFWwindow              *sys_window;
 	VkInstance               instance;
 	VkDebugUtilsMessengerEXT debug_logger;
@@ -111,6 +151,7 @@ typedef struct {
 	VkDeviceMemory           index_buff_mem;
 	VkBuffer                 vertex_buff;
 	VkDeviceMemory           vertex_buff_mem;
+	DepthBufferObjects       depth_objects;
 	FrameData                frame_data_objects;
 	TextureData              textures;
 	QueuesInfo               device_queues;

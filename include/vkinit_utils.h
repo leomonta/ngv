@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config.h"
-#include "vulkan_initialization.h"
+#include "vulkan_objects.h"
 
 #include <shaderc/shaderc.h>
 
@@ -199,4 +199,4 @@ bool create_buffer(VulkanRuntimeInfo *vri, const VkDeviceSize size, const VkBuff
  *
  * @return a memory if successfull, else 0
  */
-bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *texture, VkDeviceMemory *texture_mem);
+bool create_image(VulkanRuntimeInfo *vri, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *texture, VkDeviceMemory *texture_mem);

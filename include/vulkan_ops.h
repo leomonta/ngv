@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkan_objects.h"
+
 #include <vulkan/vulkan.h>
 
 /**
@@ -30,7 +31,6 @@ void draw_frame(VulkanRuntimeInfo *vri);
  * @return if the operation was successful
  */
 bool begin_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCommandBuffer *command_buffer);
-
 
 /**
  * Ends and submits the `command_buffer`, then waits for its completion

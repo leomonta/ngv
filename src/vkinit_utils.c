@@ -13,6 +13,7 @@
 #include <string.h>
 
 bool check_validation_layer_support() {
+#ifdef USE_VALIDATION_LAYERS
 
 	uint32_t count = 0;
 	vkEnumerateInstanceLayerProperties(&count, nullptr);
@@ -35,7 +36,13 @@ bool check_validation_layer_support() {
 
 	free(props);
 
+	
 	return false;
+#else
+	return true;
+#endif
+
+
 }
 
 const char **get_required_extensions(uint32_t *count) {
@@ -513,8 +520,10 @@ bool cleanup_swapchain(VulkanRuntimeInfo *vri) {
 		vkDestroyImageView(vri->logical_dev, vri->swapchain.views[i], nullptr);
 	}
 
-	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+	destroy_depth_objects(vri);
 
+	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+ 
 	return true;
 }
 
@@ -562,7 +571,7 @@ bool create_buffer(VulkanRuntimeInfo *vri, const VkDeviceSize size, const VkBuff
 	return true;
 }
 
-bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *texture, VkDeviceMemory *texture_mem) {
+bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *image, VkDeviceMemory *image_mem) {
 
 	VkImageCreateInfo img_info = {};
 	img_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -580,26 +589,26 @@ bool create_image(VulkanRuntimeInfo *vri , uint32_t width, uint32_t height, VkFo
 	img_info.samples           = VK_SAMPLE_COUNT_1_BIT;
 	img_info.flags             = 0; // Optional
 
-	auto res = vkCreateImage(vri->logical_dev, &img_info, nullptr, texture);
+	auto res = vkCreateImage(vri->logical_dev, &img_info, nullptr, image);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[TEXTURE] Could not create texture: %s\n", VkResult_str(res));
 	}
 
 	VkMemoryRequirements mem_req;
-	vkGetImageMemoryRequirements(vri->logical_dev, *texture, &mem_req);
+	vkGetImageMemoryRequirements(vri->logical_dev, *image, &mem_req);
 
 	VkMemoryAllocateInfo alloc_info = {};
 	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.allocationSize       = mem_req.size;
 	alloc_info.memoryTypeIndex      = find_memory_type(mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri);
 
-	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, texture_mem);
+	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, image_mem);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[TEXTURE] Could not allocate memory for the texture: %s\n", VkResult_str(res));
 		return false;
 	}
 
-	vkBindImageMemory(vri->logical_dev, *texture, *texture_mem, 0);
+	vkBindImageMemory(vri->logical_dev, *image, *image_mem, 0);
 
 	return true;
 }

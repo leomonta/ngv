@@ -1,5 +1,4 @@
 #pragma once
-
 #include "vulkan_objects.h"
 
 /**
@@ -210,6 +209,9 @@ bool create_command_pool(VulkanRuntimeInfo *vri);
  */
 bool destroy_command_pool(VulkanRuntimeInfo *vri);
 
+bool create_depth_objects(VulkanRuntimeInfo *vri);
+bool destroy_depth_objects(VulkanRuntimeInfo *vri);
+
 /**
  * Creates the texture images
  * Should redo this function to create a texture on demand and return its index
@@ -351,4 +353,3 @@ bool create_descriptor_set(VulkanRuntimeInfo *vri);
  * @return if the operation was successfull or not
  */
 bool destroy_descriptor_set(VulkanRuntimeInfo *vri);
-

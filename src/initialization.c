@@ -7,6 +7,12 @@
 #include <stdio.h>
 
 GLFWwindow *init_window() {
+
+#ifdef DO_RENDERDOC
+	glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+	glfwWindowHint(GLFW_X11_XCB_VULKAN_SURFACE, GLFW_FALSE);
+#endif
+
 	glfwInit();
 	// Don't use OpenGL
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -36,7 +42,7 @@ void terminate_window(GLFWwindow *wndw) {
 bool init_vulkan(VulkanRuntimeInfo *vri) {
 
 	// need to be sure
-	*vri = (VulkanRuntimeInfo){};
+	*vri                = (VulkanRuntimeInfo){};
 	vri->textures.count = 1;
 
 	llog(LOG_DEBUG, "[NGV] Started creating vulkan objects\n");
@@ -86,16 +92,19 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 	if (!create_pipeline(vri)) {
 		return false;
 	}
-
-	if (!create_framebuffers(vri)) {
-		return false;
-	}
-
 	if (!create_command_pool(vri)) {
 		return false;
 	}
 
 	if (!create_command_buffer(vri)) {
+		return false;
+	}
+
+	if (!create_depth_objects(vri)) {
+		return false;
+	}
+
+	if (!create_framebuffers(vri)) {
 		return false;
 	}
 
@@ -157,14 +166,16 @@ void terminate_vulkan(VulkanRuntimeInfo *vri) {
 	destroy_vertex_buffer(vri);
 
 	destroy_texture_sampler(vri, 0);
-	
+
 	destroy_texture_view(vri, 0);
 
 	destroy_texture_image(vri);
 
-	destroy_command_pool(vri);
-
 	destroy_framebuffers(vri);
+
+	destroy_depth_objects(vri);
+
+	destroy_command_pool(vri);
 
 	destroy_pipeline(vri);
 

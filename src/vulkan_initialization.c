@@ -25,13 +25,6 @@ const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENS
 constexpr unsigned       PHYSICAL_EXTENSIONS_COUNT    = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
 constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
 constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
-#define MIKU_FLOAT4_SRGB_COLOR {0.5254902f, 0.8078431f, 0.7960784f, 1.f}
-
-constexpr VkSamplerCustomBorderColorCreateInfoEXT miku_border_color = {
-    .sType             = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
-    .format            = VK_FORMAT_R8G8B8A8_SRGB,
-    .customBorderColor = {MIKU_FLOAT4_SRGB_COLOR},
-    .pNext             = nullptr};
 
 bool create_instance(VulkanRuntimeInfo *vri) {
 
@@ -205,13 +198,6 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 		q_create[i].pQueuePriorities = &q_priority;
 	}
 
-	// TODO: define a TU for extension management
-	VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_extension = {
-	    .sType                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
-	    .customBorderColors             = VK_TRUE,
-	    .customBorderColorWithoutFormat = VK_FALSE,
-	    .pNext                          = nullptr};
-
 	VkPhysicalDeviceFeatures dev_features = {};
 	dev_features.samplerAnisotropy        = VK_TRUE;
 
@@ -222,7 +208,6 @@ bool create_logical_device(VulkanRuntimeInfo *vri) {
 	dev_create.pEnabledFeatures        = &dev_features;
 	dev_create.ppEnabledExtensionNames = PHYSICAL_EXTENSIONS;
 	dev_create.enabledExtensionCount   = PHYSICAL_EXTENSIONS_COUNT;
-	dev_create.pNext                   = &custom_border_extension;
 
 #ifdef USE_VALIDATION_LAYERS
 	dev_create.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
@@ -364,15 +349,19 @@ bool re_create_swapchain(VulkanRuntimeInfo *vri) {
 
 	cleanup_swapchain(vri);
 
-	if (create_swapchain(vri)) {
+	if (!create_swapchain(vri)) {
 		return false;
 	}
 
-	if (create_image_views(vri)) {
+	if (!create_image_views(vri)) {
 		return false;
 	}
 
-	if (create_framebuffers(vri) == false) {
+	if (!create_framebuffers(vri)) {
+		return false;
+	}
+
+	if (!create_depth_objects(vri)) {
 		return false;
 	}
 
@@ -390,6 +379,55 @@ bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully destroyed\n");
+
+	return true;
+}
+bool create_depth_objects(VulkanRuntimeInfo *vri) {
+	create_image(
+	    vri,
+	    vri->swapchain.extent.width,
+	    vri->swapchain.extent.height,
+	    VK_FORMAT_D32_SFLOAT_S8_UINT,
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	    &vri->depth_objects.image,
+	    &vri->depth_objects.memory);
+
+	VkImageViewCreateInfo vw_create           = {};
+	vw_create.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	vw_create.image                           = vri->depth_objects.image;
+	vw_create.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+	vw_create.format                          = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	vw_create.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	vw_create.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+	vw_create.subresourceRange.baseMipLevel   = 0;
+	vw_create.subresourceRange.levelCount     = 1;
+	vw_create.subresourceRange.baseArrayLayer = 0;
+	vw_create.subresourceRange.layerCount     = 1;
+
+	auto res = vkCreateImageView(vri->logical_dev, &vw_create, nullptr, &vri->depth_objects.view);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DEPTH BUFFER] Could not create image views: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	// transition_image_layout(vri, vri->depth_objects.image, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+	llog(LOG_DEBUG, "[DEPTH BUFFER] Depth buffer objects successfully created.\n");
+
+	return true;
+}
+
+bool destroy_depth_objects(VulkanRuntimeInfo *vri) {
+
+	vkDestroyImage(vri->logical_dev, vri->depth_objects.image, nullptr);
+	vkFreeMemory(vri->logical_dev, vri->depth_objects.memory, nullptr);
+	vkDestroyImageView(vri->logical_dev, vri->depth_objects.view, nullptr);
+
+	llog(LOG_DEBUG, "[DEPTH BUFFER] Depth buffer objects successfully destroyed.\n");
 
 	return true;
 }
@@ -528,31 +566,31 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 	rt_create.depthBiasEnable                        = VK_FALSE;
 
 	// TODO: This should probably be enabled
-	VkPipelineMultisampleStateCreateInfo ms_create = {};
-	ms_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	ms_create.sampleShadingEnable                  = VK_FALSE;
-	ms_create.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
-	ms_create.minSampleShading                     = 1.0f;     // Optional
-	ms_create.pSampleMask                          = nullptr;  // Optional
-	ms_create.alphaToCoverageEnable                = VK_FALSE; // Optional
-	ms_create.alphaToOneEnable                     = VK_FALSE; // Optional
+	VkPipelineMultisampleStateCreateInfo multisampling_create = {};
+	multisampling_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling_create.sampleShadingEnable                  = VK_FALSE;
+	multisampling_create.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
+	multisampling_create.minSampleShading                     = 1.0f;     // Optional
+	multisampling_create.pSampleMask                          = nullptr;  // Optional
+	multisampling_create.alphaToCoverageEnable                = VK_FALSE; // Optional
+	multisampling_create.alphaToOneEnable                     = VK_FALSE; // Optional
 
-	VkPipelineColorBlendAttachmentState cb_attachment = {};
-	cb_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	cb_attachment.blendEnable                         = VK_FALSE;
-	cb_attachment.blendEnable                         = VK_TRUE;
-	cb_attachment.srcColorBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
-	cb_attachment.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	cb_attachment.colorBlendOp                        = VK_BLEND_OP_ADD;
-	cb_attachment.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE;
-	cb_attachment.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
-	cb_attachment.alphaBlendOp                        = VK_BLEND_OP_ADD;
+	VkPipelineColorBlendAttachmentState colorblend_attach = {};
+	colorblend_attach.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorblend_attach.blendEnable                         = VK_FALSE;
+	colorblend_attach.blendEnable                         = VK_TRUE;
+	colorblend_attach.srcColorBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorblend_attach.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorblend_attach.colorBlendOp                        = VK_BLEND_OP_ADD;
+	colorblend_attach.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE;
+	colorblend_attach.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
+	colorblend_attach.alphaBlendOp                        = VK_BLEND_OP_ADD;
 
-	VkPipelineColorBlendStateCreateInfo cb_create = {};
-	cb_create.sType                               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	cb_create.logicOpEnable                       = VK_FALSE;
-	cb_create.attachmentCount                     = 1;
-	cb_create.pAttachments                        = &cb_attachment;
+	VkPipelineColorBlendStateCreateInfo colorblend_create = {};
+	colorblend_create.sType                               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorblend_create.logicOpEnable                       = VK_FALSE;
+	colorblend_create.attachmentCount                     = 1;
+	colorblend_create.pAttachments                        = &colorblend_attach;
 
 	VkDescriptorSetLayoutBinding mvp_binding = {};
 	mvp_binding.binding                      = 0;
@@ -584,14 +622,14 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 
 	llog(LOG_DEBUG, "[PIPELINE] Uniform descroptor set layout successfully created\n");
 
-	VkPipelineLayoutCreateInfo pl_layout = {};
-	pl_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pl_layout.setLayoutCount             = 1;
-	pl_layout.pSetLayouts                = &vri->pipeline.descriptor_set_layout;
-	pl_layout.pushConstantRangeCount     = 0;       // Optional
-	pl_layout.pPushConstantRanges        = nullptr; // Optional
+	VkPipelineLayoutCreateInfo pipeline_layout = {};
+	pipeline_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipeline_layout.setLayoutCount             = 1;
+	pipeline_layout.pSetLayouts                = &vri->pipeline.descriptor_set_layout;
+	pipeline_layout.pushConstantRangeCount     = 0;       // Optional
+	pipeline_layout.pPushConstantRanges        = nullptr; // Optional
 
-	res = vkCreatePipelineLayout(vri->logical_dev, &pl_layout, nullptr, &vri->pipeline.layout);
+	res = vkCreatePipelineLayout(vri->logical_dev, &pipeline_layout, nullptr, &vri->pipeline.layout);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
@@ -600,23 +638,33 @@ bool create_pipeline(VulkanRuntimeInfo *vri) {
 
 	llog(LOG_DEBUG, "[PIPELINE] Pipeline layout successfully crated\n");
 
-	VkGraphicsPipelineCreateInfo pl_create = {};
-	pl_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pl_create.stageCount                   = 2;
-	pl_create.pStages                      = sh_stages;
-	pl_create.pVertexInputState            = &vl_create;
-	pl_create.pInputAssemblyState          = &ia_create;
-	pl_create.pViewportState               = &vp_create;
-	pl_create.pRasterizationState          = &rt_create;
-	pl_create.pMultisampleState            = &ms_create;
-	pl_create.pDepthStencilState           = nullptr; // Optional
-	pl_create.pColorBlendState             = &cb_create;
-	pl_create.pDynamicState                = &dn_create;
-	pl_create.layout                       = vri->pipeline.layout;
-	pl_create.renderPass                   = vri->renderpass;
-	pl_create.subpass                      = 0;
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_create = {};
+	depth_stencil_create.sType                                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depth_stencil_create.depthTestEnable                       = VK_TRUE;
+	depth_stencil_create.depthWriteEnable                      = VK_TRUE;
+	depth_stencil_create.depthCompareOp                        = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depth_stencil_create.depthBoundsTestEnable                 = VK_FALSE;
+	depth_stencil_create.minDepthBounds                        = 0.0f; // Optional
+	depth_stencil_create.maxDepthBounds                        = 1.0f; // Optional
+	depth_stencil_create.stencilTestEnable                     = VK_FALSE;
 
-	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pl_create, nullptr, &vri->pipeline.object);
+	VkGraphicsPipelineCreateInfo pipeline_create = {};
+	pipeline_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipeline_create.stageCount                   = 2;
+	pipeline_create.pStages                      = sh_stages;
+	pipeline_create.pVertexInputState            = &vl_create;
+	pipeline_create.pInputAssemblyState          = &ia_create;
+	pipeline_create.pViewportState               = &vp_create;
+	pipeline_create.pRasterizationState          = &rt_create;
+	pipeline_create.pMultisampleState            = &multisampling_create;
+	pipeline_create.pDepthStencilState           = &depth_stencil_create;
+	pipeline_create.pColorBlendState             = &colorblend_create;
+	pipeline_create.pDynamicState                = &dn_create;
+	pipeline_create.layout                       = vri->pipeline.layout;
+	pipeline_create.renderPass                   = vri->renderpass;
+	pipeline_create.subpass                      = 0;
+
+	res = vkCreateGraphicsPipelines(vri->logical_dev, VK_NULL_HANDLE, 1, &pipeline_create, nullptr, &vri->pipeline.object);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
@@ -644,43 +692,58 @@ bool destroy_pipeline(VulkanRuntimeInfo *vri) {
 }
 
 bool create_renderpass(VulkanRuntimeInfo *vri) {
-	VkAttachmentDescription cl_attachment = {};
-	cl_attachment.format                  = vri->swapchain.format;
-	cl_attachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
-	cl_attachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	cl_attachment.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
-	cl_attachment.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	cl_attachment.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	cl_attachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-	cl_attachment.finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	VkAttachmentDescription attachments[2] = {};
+	// color
+	attachments[0].format                  = vri->swapchain.format;
+	attachments[0].samples                 = VK_SAMPLE_COUNT_1_BIT;
+	attachments[0].loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[0].storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[0].stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[0].stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[0].initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[0].finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// depth
+	attachments[1].format                  = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	attachments[1].samples                 = VK_SAMPLE_COUNT_1_BIT;
+	attachments[1].loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[1].stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[1].stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[1].initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[1].finalLayout             = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference cl_ref = {};
-	cl_ref.attachment            = 0;
-	cl_ref.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference color_ref = {};
+	color_ref.attachment            = 0;
+	color_ref.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments    = &cl_ref;
+	VkAttachmentReference depth_ref = {};
+	depth_ref.attachment            = 1;
+	depth_ref.layout                = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDependency sp_deps = {};
-	sp_deps.srcSubpass          = VK_SUBPASS_EXTERNAL;
-	sp_deps.dstSubpass          = 0;
-	sp_deps.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	sp_deps.srcAccessMask       = VK_ACCESS_NONE;
-	sp_deps.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	sp_deps.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	VkSubpassDescription subpass    = {};
+	subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount    = 1;
+	subpass.pColorAttachments       = &color_ref;
+	subpass.pDepthStencilAttachment = &depth_ref;
 
-	VkRenderPassCreateInfo rp_create = {};
-	rp_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	rp_create.attachmentCount        = 1;
-	rp_create.pAttachments           = &cl_attachment;
-	rp_create.subpassCount           = 1;
-	rp_create.pSubpasses             = &subpass;
-	rp_create.dependencyCount        = 1;
-	rp_create.pDependencies          = &sp_deps;
+	VkSubpassDependency subpass_deps = {};
+	subpass_deps.srcSubpass          = VK_SUBPASS_EXTERNAL;
+	subpass_deps.dstSubpass          = 0;
+	subpass_deps.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subpass_deps.srcAccessMask       = VK_ACCESS_NONE;
+	subpass_deps.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subpass_deps.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	auto res = vkCreateRenderPass(vri->logical_dev, &rp_create, nullptr, &vri->renderpass);
+	VkRenderPassCreateInfo renderpass_create = {};
+	renderpass_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderpass_create.attachmentCount        = 2;
+	renderpass_create.pAttachments           = attachments;
+	renderpass_create.subpassCount           = 1;
+	renderpass_create.pSubpasses             = &subpass;
+	renderpass_create.dependencyCount        = 1;
+	renderpass_create.pDependencies          = &subpass_deps;
+
+	auto res = vkCreateRenderPass(vri->logical_dev, &renderpass_create, nullptr, &vri->renderpass);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[RENDERPASS] Could not create the render pass: %s\n", VkResult_str(res));
 	}
@@ -704,13 +767,14 @@ bool create_framebuffers(VulkanRuntimeInfo *vri) {
 	TEST_MALLOC(vri->swapchain.framebuffers)
 
 	for (size_t i = 0; i < vri->swapchain.buffers_count; ++i) {
-		VkImageView attachments[] = {
-		    vri->swapchain.views[i]};
+		VkImageView attachments[2] = {
+		    vri->swapchain.views[i],
+		    vri->depth_objects.view};
 
 		VkFramebufferCreateInfo fb_create = {};
 		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		fb_create.renderPass              = vri->renderpass;
-		fb_create.attachmentCount         = 1;
+		fb_create.attachmentCount         = 2;
 		fb_create.pAttachments            = attachments;
 		fb_create.width                   = vri->swapchain.extent.width;
 		fb_create.height                  = vri->swapchain.extent.height;
@@ -872,10 +936,9 @@ bool create_texture_sampler(VulkanRuntimeInfo *vri, uint32_t index) {
 	samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
+	samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 	samplerInfo.anisotropyEnable        = VK_TRUE;
 	samplerInfo.maxAnisotropy           = properties.limits.maxSamplerAnisotropy;
-	samplerInfo.pNext                   = &miku_border_color;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable           = VK_FALSE;
 	samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
@@ -962,6 +1025,7 @@ bool create_descriptor_set(VulkanRuntimeInfo *vri) {
 		img_info.sampler               = vri->textures.samplers[0];
 
 		VkWriteDescriptorSet desc_write[2] = {};
+		// uniform buffer
 		desc_write[0].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		desc_write[0].dstSet               = vri->frame_data_objects.descriptor_sets[i];
 		desc_write[0].dstBinding           = 0;
@@ -971,14 +1035,14 @@ bool create_descriptor_set(VulkanRuntimeInfo *vri) {
 		desc_write[0].pBufferInfo          = &db_info;
 		desc_write[0].pImageInfo           = nullptr; // Optional
 		desc_write[0].pTexelBufferView     = nullptr; // Optional
-
+		// image sampler
 		desc_write[1].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		desc_write[1].dstSet               = vri->frame_data_objects.descriptor_sets[i];
 		desc_write[1].dstBinding           = 1;
 		desc_write[1].dstArrayElement      = 0;
 		desc_write[1].descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		desc_write[1].descriptorCount      = 1;
-		desc_write[1].pImageInfo          = &img_info;
+		desc_write[1].pImageInfo           = &img_info;
 		desc_write[1].pTexelBufferView     = nullptr; // Optional
 
 		vkUpdateDescriptorSets(vri->logical_dev, 2, desc_write, 0, nullptr);

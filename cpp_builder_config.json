@@ -20,24 +20,27 @@
 		"temp_dir": "obj"
 	},
 
-	"debug": {
-		"compiler_args": "-g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion -fsanitize=leak -fsanitize=address",
+	"default": {
 		"linker_args": "rcs"
+	},
+
+	"debug": {
+		"compiler_args": "-g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion -fsanitize=leak -fsanitize=address"
 	},
 
 	"no-asan": {
-		"compiler_args": "-g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion",
-		"linker_args": "rcs"
+		"compiler_args": "-g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion"
 	},
 
+	"renderdoc": {
+		"compiler_args": "-g3 -std=c23 -Wall -DNDEBUG -DDO_RENDERDOC -Wextra -Wconversion"
+	},
 
 	"release": {
-		"compiler_args": "-Ofast -DNDEBUG -std=c23",
-		"linker_args": "rcs"
+		"compiler_args": "-Ofast -DNDEBUG -std=c23"
 	},
 
 	"analyze": {
-		"compiler_args": "-g3 -std=c23 -Wno-missing-field-initializers -DDEBUG -Wno-unknown-pragmas -Wall -Wconversion -Wshadow -Wextra -fanalyzer",
-		"linker_args": "rcs"
+		"compiler_args": "-g3 -std=c23 -Wno-missing-field-initializers -DDEBUG -Wno-unknown-pragmas -Wall -Wconversion -Wshadow -Wextra -fanalyzer"
 	}
 }

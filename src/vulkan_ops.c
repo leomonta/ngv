@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "shader_data.h"
 #include "vkinit_utils.h"
+#include "vulkan_initialization.h"
 #include "vulkan_memory.h"
 
 static uint32_t frame_index = 0;
@@ -19,17 +20,22 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 			llog(LOG_FATAL, "[COMMAND BUFFER] Could not begin recording the command buffer: %s\n", VkResult_str(res));
 		}
 
-		VkClearValue          clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-		VkRenderPassBeginInfo rp_info    = {};
-		rp_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		rp_info.renderPass               = vri->renderpass;
-		rp_info.framebuffer              = vri->swapchain.framebuffers[img_index];
-		rp_info.renderArea.offset        = (VkOffset2D){0, 0};
-		rp_info.renderArea.extent        = vri->swapchain.extent;
-		rp_info.clearValueCount          = 1;
-		rp_info.pClearValues             = &clearColor;
+		VkClearValue clear_colors[2] = {};
+		clear_colors[0].color        = (VkClearColorValue){
+		           .float32 = {0.0f, 0.0f, 0.0f, 1.0f}
+        };
+		clear_colors[1].depthStencil = (VkClearDepthStencilValue){1.0f, 0};
 
-		vkCmdBeginRenderPass(vri->frame_data_objects.cmd_buff[frame_index], &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+		VkRenderPassBeginInfo renderpass_info = {};
+		renderpass_info.sType                 = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderpass_info.renderPass            = vri->renderpass;
+		renderpass_info.framebuffer           = vri->swapchain.framebuffers[img_index];
+		renderpass_info.renderArea.offset     = (VkOffset2D){0, 0};
+		renderpass_info.renderArea.extent     = vri->swapchain.extent;
+		renderpass_info.clearValueCount       = 2;
+		renderpass_info.pClearValues          = clear_colors;
+
+		vkCmdBeginRenderPass(vri->frame_data_objects.cmd_buff[frame_index], &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
 			vkCmdBindPipeline(vri->frame_data_objects.cmd_buff[frame_index], VK_PIPELINE_BIND_POINT_GRAPHICS, vri->pipeline.object);
 			VkViewport viewport = {};
@@ -46,8 +52,8 @@ bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index) {
 			scissor.extent   = vri->swapchain.extent;
 			vkCmdSetScissor(vri->frame_data_objects.cmd_buff[frame_index], 0, 1, &scissor);
 
-			VkBuffer     v_bufs[]  = {vri->vertex_buff};
-			VkDeviceSize offsets[] = {};
+			VkBuffer     v_bufs[1]  = {vri->vertex_buff};
+			VkDeviceSize offsets[1] = {0};
 			vkCmdBindVertexBuffers(vri->frame_data_objects.cmd_buff[frame_index], 0, 1, v_bufs, offsets);
 
 			vkCmdBindIndexBuffer(vri->frame_data_objects.cmd_buff[frame_index], vri->index_buff, 0, VK_INDEX_TYPE_UINT32);
@@ -221,18 +227,33 @@ void transition_image_layout(VulkanRuntimeInfo *vri, VkImage image, VkFormat for
 	VkPipelineStageFlags src_stage = {};
 	VkPipelineStageFlags dst_stage = {};
 
+	if (from_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	} else {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
 	if (from_layout == VK_IMAGE_LAYOUT_UNDEFINED && to_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		src_stage             = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		dst_stage             = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
 	} else if (from_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && to_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		src_stage             = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		dst_stage             = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+	} else if (from_layout == VK_IMAGE_LAYOUT_UNDEFINED && to_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		src_stage             = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dst_stage             = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
 	} else {
 		llog(LOG_ERROR, "[IMAGE] Unsuppoerted layout transition.\n");
 		return;
@@ -240,7 +261,6 @@ void transition_image_layout(VulkanRuntimeInfo *vri, VkImage image, VkFormat for
 
 	vkCmdPipelineBarrier(cmd_buff, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	end_temporary_command_buffer(vri, GRAPHIC_QUEUE, cmd_buff);
-
 }
 
 void copy_buffer_to_image(VulkanRuntimeInfo *vri, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {

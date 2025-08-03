@@ -1,9 +1,9 @@
 #include "vulkan_memory.h"
 
+#include "cglm_proxy.h"
 #include "logger.h"
 #include "vulkan/vulkan_core.h"
 
-#include <cglm/cglm.h>
 #include <string.h>
 
 uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri) {
@@ -59,11 +59,11 @@ bool update_uniform_buffer(VulkanRuntimeInfo *vri, uint32_t frame_index) {
 	};
 
 	glm_mat4_copy(mvp.model, GLM_MAT4_IDENTITY);
-	glm_rotate(mvp.model, glm_rad(1), ((vec3){0.0f, 0.0f, 1.0f}));
+	glm_rotate(mvp.model, glm_rad(1.f), ((vec3){0.0f, 0.0f, 1.0f}));
 
 	glm_lookat((float[]){2.0f, 2.0f, 2.0f}, (float[]){0.0f, 0.0f, 0.0f}, (float[]){0.0f, 0.0f, 1.0f}, mvp.view);
 
-	glm_perspective(glm_rad(100.f), (float)vri->swapchain.extent.width / (float)vri->swapchain.extent.height, 0.0f, 1.0f, mvp.proj);
+	glm_perspective(glm_rad(100.f), (float)vri->swapchain.extent.width / (float)vri->swapchain.extent.height, 0.1f, 4.0f, mvp.proj);
 
 	mvp.proj[1][1] *= -1;
 
