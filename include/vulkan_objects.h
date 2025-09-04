@@ -10,6 +10,10 @@
 #include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
+// ------------------------------------------------------------------------------------------------
+// internal Enums
+// ------------------------------------------------------------------------------------------------
+
 typedef enum : char {
 	GRAPHIC_QUEUE,
 	COMPUTE_QUEUE,
@@ -27,13 +31,17 @@ typedef enum : char {
 	COMPUTE_SHADER,
 } ShaderKind;
 
+// ------------------------------------------------------------------------------------------------
+// Simple structs
+// ------------------------------------------------------------------------------------------------
+
 typedef struct {
 	VkQueue graphics;
 	VkQueue compute; // unused
 	VkQueue transfer;
 	VkQueue sparse_binding; // unused
 	VkQueue present;
-} QueuesInfo;
+} CreatedQueues;
 
 typedef struct {
 	uint32_t graphics;
@@ -43,7 +51,7 @@ typedef struct {
 	uint32_t present;
 
 	bitfield available_families;
-} QueueFamilyIndicies;
+} QueuesIndicies;
 
 typedef struct {
 	VkSwapchainKHR swapchain;
@@ -113,15 +121,15 @@ typedef struct {
 
 // infrastructure that may be changed
 typedef struct {
-	VkRenderPass        renderpass;
-	VkCommandPool       graphics_cmd_pool;
-	VkCommandPool       transfer_cmd_pool;
-	VkDescriptorPool    descriptor_pool;
-	QueuesInfo          device_queues;
-	QueueFamilyIndicies device_queues_indices;
-	SwapchainInfo       swapchain;
-	ShaderPipeline      pipeline;
-	DepthBufferObjects  depth_objects;
+	VkRenderPass       renderpass;
+	VkCommandPool      graphics_cmd_pool;
+	VkCommandPool      transfer_cmd_pool;
+	VkDescriptorPool   descriptor_pool;
+	CreatedQueues      device_queues;
+	QueuesIndicies     device_queues_indices;
+	SwapchainInfo      swapchain;
+	ShaderPipeline     pipeline;
+	DepthBufferObjects depth_objects;
 } VulkanRederingObjects;
 
 // data that needs to be modified per call or quite often
@@ -154,8 +162,50 @@ typedef struct {
 	DepthBufferObjects       depth_objects;
 	FrameData                frame_data_objects;
 	TextureData              textures;
-	QueuesInfo               device_queues;
-	QueueFamilyIndicies      device_queues_indices;
+	CreatedQueues            device_queues;
+	QueuesIndicies           device_queues_indices;
 	SwapchainInfo            swapchain;
 	ShaderPipeline           pipeline;
 } VulkanRuntimeInfo;
+
+// ------------------------------------------------------------------------------------------------
+// Static data, set and startup and done, referenced rarely
+// ------------------------------------------------------------------------------------------------
+
+typedef struct {
+	GLFWwindow      *system_window;
+	VkInstance       vulkan_instance;
+	VkSurfaceKHR     surface;
+	VkPhysicalDevice physical_dev;
+} VulkanStaticInfo;
+
+// ------------------------------------------------------------------------------------------------
+// Instance specification, pipeline and pieline related data that will rarely change but will be often read
+// ------------------------------------------------------------------------------------------------
+
+typedef struct {
+	VkDevice         logical_dev;
+	VkRenderPass     renderpass;
+	VkCommandPool    graphics_cmd_pool;
+	VkCommandPool    transfer_cmd_pool;
+	VkDescriptorPool descriptor_pool;
+	VkCommandBuffer  transfer_cmd_buff;
+	ShaderPipeline   pipeline;
+	CreatedQueues    device_queues;
+	QueuesIndicies   device_queues_indices;
+	SwapchainInfo    swapchain;
+} VulkanSetupInfo;
+
+// ------------------------------------------------------------------------------------------------
+// dynamic Frame data
+// ------------------------------------------------------------------------------------------------
+
+typedef struct {
+	VkBuffer           index_buff;
+	VkDeviceMemory     index_buff_mem;
+	VkBuffer           vertex_buff;
+	VkDeviceMemory     vertex_buff_mem;
+	DepthBufferObjects depth_objects;
+	FrameData          frame_data_objects;
+	TextureData        textures;
+} VulaknFrameData;

@@ -6,10 +6,10 @@
 #include <shaderc/shaderc.h>
 
 // ugly I KNOW
-#ifdef USE_VALIDATION_LAYERS
-static const char        *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
-static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
-#endif
+// #ifdef USE_VALIDATION_LAYERS
+// static const char        *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
+// static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
+// #endif
 
 /**
  * Checks if the validation layers are supported on this system
@@ -35,7 +35,7 @@ const char **get_required_extensions(uint32_t *count);
  *
  * @return `true` if the given device satisfies the defined extensions, `false`
  */
-QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
+QueuesIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Checks if the give `VkPhysicalDevice` supports some required extension to render on screen (e.g. swapchain)
@@ -45,15 +45,6 @@ QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR sur
  * @return `true` if the given device satisfies the defined extensions, `false`
  */
 bool has_required_extensions(VkPhysicalDevice device);
-
-/**
- * Reads off a file (in the future maybe) or a compile time constants which physica device should be used
- *
- * @param[in] `devs` the list of devices in the system
- *
- * @return the `VkPhysicalDevice` chosen
- */
-VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t count);
 
 /**
  * Pick the best physical (as in hardware) device based on some requirements (swap chain support, graphic family availability)

@@ -1,8 +1,18 @@
+// The place to define any kind of magic number of name string
+//
+// A #define will be used unless a pointer to the data is necessary
 #pragma once
+
+#include <vulkan/vulkan_core.h>
+
+// ------------------------------------------------------------------------------------------------
+// SWITCHES
+// ------------------------------------------------------------------------------------------------
+
 /**
  * Compile defines switches to enable / disable various functionality due to DEBUG / non DEBUG compilation
  */
-#if ! defined(DEBUG) && ! defined(NDEBUG)
+#if !defined(DEBUG) && !defined(NDEBUG)
 #	error "At least one between DEBUG and NDEBUG must be defined at compile time"
 #endif
 
@@ -17,6 +27,43 @@
 #ifdef NDEBUG
 
 #endif
+
+// ------------------------------------------------------------------------------------------------
+// NAMES
+// ------------------------------------------------------------------------------------------------
+
+#define NGV_DEFUALT_APPLICATION_NAME "NGV application"
+#define NGV_ENGINE_NAME              "Neon Genesis Vulkan"
+
+// ------------------------------------------------------------------------------------------------
+// VALIDATION_LAYERS
+// ------------------------------------------------------------------------------------------------
+
+// ugly I KNOW
+#ifdef USE_VALIDATION_LAYERS
+static const char        *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
+static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
+
+static const char        *VALIDATION_EXTENSIONS[]     = {VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
+static constexpr unsigned VALIDATION_EXTENSIONS_COUNT = sizeof(VALIDATION_EXTENSIONS) / sizeof(VALIDATION_EXTENSIONS[0]);
+#endif
+
+// ------------------------------------------------------------------------------------------------
+// VERSION
+// ------------------------------------------------------------------------------------------------
+
+#define NGV_APPLICATION_VERSION VK_MAKE_VERSION(0, 0, 0)
+#define NGV_ENGINE_VERSION      VK_MAKE_VERSION(0, 0, 1)
+
+// ------------------------------------------------------------------------------------------------
+// MAGIC_NUMBERS
+// ------------------------------------------------------------------------------------------------
+
+#define DEFAULT_WINDOW_HEIGHT 1080
+
+#define DEFAULT_WINDOW_WIDTH 1920
+
+// ????
 
 #define VULKAN_CHOSEN_PHYSICAL_DEVICE_ID 9504
 

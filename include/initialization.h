@@ -3,9 +3,6 @@
 #include "vulkan_initialization.h"
 
 #include <GLFW/glfw3.h>
-#define DEFAULT_WINDOW_HEIGHT 1080
-
-#define DEFAULT_WINDOW_WIDTH  1920
 
 /**
  * Initializes `glfw` and returns a newly created window

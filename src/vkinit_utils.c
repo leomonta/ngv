@@ -67,9 +67,9 @@ const char **get_required_extensions(uint32_t *count) {
 	return exts;
 }
 
-QueueFamilyIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+QueuesIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
-	QueueFamilyIndicies res   = {};
+	QueuesIndicies res   = {};
 	uint32_t            count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 
@@ -145,22 +145,6 @@ bool has_required_extensions(VkPhysicalDevice device) {
 	}
 
 	free(aval_exts);
-
-	return res;
-}
-
-VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t count) {
-	VkPhysicalDeviceProperties props;
-
-	VkPhysicalDevice res = VK_NULL_HANDLE;
-
-	for (size_t i = 0; i < count; ++i) {
-		vkGetPhysicalDeviceProperties(devs[i], &props);
-		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %ld\n", props.deviceID);
-		if (props.deviceID == VULKAN_CHOSEN_PHYSICAL_DEVICE_ID) {
-			res = devs[i];
-		}
-	}
 
 	return res;
 }
