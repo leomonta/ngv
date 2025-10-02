@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config.h"
-#include "vulkan_objects.h"
+#include "ngv_objects.h"
 
 #include <shaderc/shaderc.h>
 
@@ -26,16 +26,6 @@ bool check_validation_layer_support();
  * @return an array of required extensions names
  */
 const char **get_required_extensions(uint32_t *count);
-
-/**
- * Queries the queue capabilities of the device and returns the indicies of the available ones
- *
- * @param[in] `device` the device to get the available families from
- * @param[in] `surface` needed to check for surface specific families
- *
- * @return `true` if the given device satisfies the defined extensions, `false`
- */
-QueuesIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 /**
  * Checks if the give `VkPhysicalDevice` supports some required extension to render on screen (e.g. swapchain)

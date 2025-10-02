@@ -169,6 +169,28 @@ typedef struct {
 } VulkanRuntimeInfo;
 
 // ------------------------------------------------------------------------------------------------
+// Configuration structs
+// ------------------------------------------------------------------------------------------------
+
+typedef struct {
+	bool     use_preferred_device;
+	uint32_t preferred_physical_device_id;
+} VulkanStaticSettings;
+
+typedef struct {
+} VulkanSetupSettings;
+
+typedef enum {
+	TWO_DIM,
+	THREE_DIM,
+} RendereDimensions;
+
+typedef struct {
+	VulkanStaticSettings static_settings;
+	VulkanSetupSettings  setup_settings;
+} RendererSettings;
+
+// ------------------------------------------------------------------------------------------------
 // Static data, set and startup and done, referenced rarely
 // ------------------------------------------------------------------------------------------------
 
@@ -201,6 +223,7 @@ typedef struct {
 // ------------------------------------------------------------------------------------------------
 
 typedef struct {
+	
 	VkBuffer           index_buff;
 	VkDeviceMemory     index_buff_mem;
 	VkBuffer           vertex_buff;

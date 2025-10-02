@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_objects.h"
+#include "ngv_objects.h"
 
 #include <vulkan/vulkan.h>
 

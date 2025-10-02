@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_objects.h"
+#include "ngv_objects.h"
 
 uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri);
 

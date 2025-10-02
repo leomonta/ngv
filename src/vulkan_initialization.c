@@ -21,8 +21,6 @@
 #	include <stdio.h>
 #endif
 
-const char              *PHYSICAL_EXTENSIONS[]        = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME};
-constexpr unsigned       PHYSICAL_EXTENSIONS_COUNT    = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
 constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
 constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
 
@@ -1208,7 +1206,7 @@ bool create_uniform_buffer(VulkanRuntimeInfo *vri) {
 	return true;
 }
 
-bool destroy_uniform_buffer(VulkanRuntimeInfo *vri) {
+bool destroy_uniform_buffer(VulkanSetupInfo *vri) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
 		vkDestroyBuffer(vri->logical_dev, vri->frame_data_objects.uniform_buff[i], nullptr);

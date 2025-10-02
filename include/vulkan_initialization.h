@@ -1,5 +1,5 @@
 #pragma once
-#include "vulkan_objects.h"
+#include "ngv_objects.h"
 
 /**
  * returns if any requested validation layer is available

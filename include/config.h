@@ -36,7 +36,7 @@
 #define NGV_ENGINE_NAME              "Neon Genesis Vulkan"
 
 // ------------------------------------------------------------------------------------------------
-// VALIDATION_LAYERS
+// VALIDATION LAYERS
 // ------------------------------------------------------------------------------------------------
 
 // ugly I KNOW
@@ -47,6 +47,13 @@ static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / 
 static const char        *VALIDATION_EXTENSIONS[]     = {VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
 static constexpr unsigned VALIDATION_EXTENSIONS_COUNT = sizeof(VALIDATION_EXTENSIONS) / sizeof(VALIDATION_EXTENSIONS[0]);
 #endif
+
+// ------------------------------------------------------------------------------------------------
+// EXTENSIONS
+// ------------------------------------------------------------------------------------------------
+
+const char        *PHYSICAL_EXTENSIONS[]     = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+constexpr unsigned PHYSICAL_EXTENSIONS_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
 
 // ------------------------------------------------------------------------------------------------
 // VERSION

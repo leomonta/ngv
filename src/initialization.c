@@ -81,7 +81,7 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 		return false;
 	}
 
-	if (!create_image_views(vri)) {
+	if (!create_swapchain_image_views(vri)) {
 		return false;
 	}
 

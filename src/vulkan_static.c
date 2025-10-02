@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-bool create_static_info(VulkanStaticInfo *vsi) {
+bool create_static_info(VulkanStaticInfo *vsi, VulkanStaticSettings settings) {
 	if (!create_instance(&vsi->vulkan_instance)) {
 		return false;
 	}
@@ -18,12 +18,15 @@ bool create_static_info(VulkanStaticInfo *vsi) {
 	if (!init_window(&vsi->system_window)) {
 		return false;
 	}
+	if (!pick_physical_device(settings, vsi)) {
+		return false;
+	}
 	return true;
 }
 
 bool create_instance(VkInstance *instance) {
 
-	// Application information, fairly trivial / uninmportant
+	// Application information, fairly trivial / unimportant
 
 	VkApplicationInfo app_create_info = {
 	    .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -32,6 +35,7 @@ bool create_instance(VkInstance *instance) {
 	    .pEngineName        = NGV_ENGINE_NAME,
 	    .engineVersion      = NGV_ENGINE_VERSION,
 	    .apiVersion         = VK_API_VERSION_1_4,
+	    .pNext              = nullptr,
 	};
 
 	// what we need to create with vkCreateInstance
@@ -43,6 +47,7 @@ bool create_instance(VkInstance *instance) {
 	    .enabledExtensionCount   = 0,
 	    .ppEnabledExtensionNames = nullptr,
 	    .flags                   = 0, // None available
+	    .pNext                   = nullptr,
 	};
 
 #ifdef USE_VALIDATION_LAYERS
@@ -179,7 +184,7 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 	return res;
 }
 
-bool pick_physical_device(VulkanStaticInfo *vsi, uint32_t preferred_dev_id) {
+bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo *vsi) {
 
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(vsi->vulkan_instance, &count, nullptr);
@@ -190,7 +195,13 @@ bool pick_physical_device(VulkanStaticInfo *vsi, uint32_t preferred_dev_id) {
 	TEST_MALLOC(devs)
 	vkEnumeratePhysicalDevices(vsi->vulkan_instance, &count, devs);
 
-	auto chosen_dev = get_chosen_device(devs, count, preferred_dev_id); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
+	VkPhysicalDevice chosen_dev;
+
+	if (settings.use_preferred_device) {
+		chosen_dev = devs[0];
+	} else {
+		chosen_dev = get_chosen_device(devs, count, settings.preferred_physical_device_id); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
+	}
 
 	if (chosen_dev == VK_NULL_HANDLE) {
 		llog(LOG_FATAL, "[PHYSICAL DEVICE] Could not find a suitable physical device\n");

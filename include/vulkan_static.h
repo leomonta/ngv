@@ -1,15 +1,16 @@
 #pragma once
 
-#include "vulkan_objects.h"
+#include "ngv_objects.h"
 
 /**
  * Fill the given `VulkanStaticInfo` with valid objects as configured
  *
- * @param[in][out] `vsi` the vulkan static info to fill
+ * @param[in] `settings` the settings for the static info creation
+ * @param[out] `vsi` the vulkan static info to fill
  *
  * @return if the operation was successfull or not
  */
-bool create_static_info(VulkanStaticInfo *vsi);
+bool create_static_info(VulkanStaticInfo *vsi, VulkanStaticSettings settings);
 
 /**
  * Creates a `VkInstance`
@@ -73,9 +74,9 @@ bool destroy_surface(VulkanStaticInfo *surface);
 /**
  * List the available physical devices to use
  *
- * @param[in] `vri` the vulkan context to use
  * @param[in] `preferred_dev_id` the id of the preferred physical device to use, if UINT32_MAX any will be taken
+ * @param[in] `vsi` the vulkan static
  *
  * @return `true` if successfull, `false` if no suitable device (or at all) was found
  */
-bool pick_physical_device(VulkanStaticInfo *vsi, uint32_t preferred_dev_id);
+bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo *vsi);
