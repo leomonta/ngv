@@ -1,0 +1,29 @@
+compiler:
+  compiler_style: gcc
+  compiler_exe: gcc
+  linker_exe: ar
+
+directories:
+  project_dir: .
+  exe_path_name: bin/libngv.a
+  include_dirs: [include, ext]
+  source_dirs: [src]
+  temp_dir: obj
+
+default:
+  linker_args: rcs
+
+debug:
+  compiler_args: -g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion -fsanitize=leak -fsanitize=address
+
+no-asan:
+  compiler_args: -g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion
+
+renderdoc:
+  compiler_args: -g3 -std=c23 -Wall -DNDEBUG -DDO_RENDERDOC -Wextra -Wconversion
+
+release:
+  compiler_args: -Ofast -DNDEBUG -std=c23
+
+analyze:
+  compiler_args: -g3 -std=c23 -Wno-missing-field-initializers -DDEBUG -Wno-unknown-pragmas -Wall -Wconversion -Wshadow -Wextra -fanalyzer
