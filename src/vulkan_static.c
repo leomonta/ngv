@@ -8,17 +8,30 @@
 #include <errno.h>
 #include <string.h>
 
-bool create_static_info(VulkanStaticInfo *vsi, VulkanStaticSettings settings) {
-	if (!create_instance(&vsi->vulkan_instance)) {
+bool create_static_info(VulkanStaticInfo *static_info, VulkanStaticSettings settings) {
+	if (!create_instance(&static_info->vulkan_instance)) {
 		return false;
 	}
-	if (!init_window(&vsi->system_window)) {
+	if (!create_surface(static_info)) {
 		return false;
 	}
-	if (!init_window(&vsi->system_window)) {
+	if (!init_window(&static_info->system_window)) {
 		return false;
 	}
-	if (!pick_physical_device(settings, vsi)) {
+	if (!pick_physical_device(settings, static_info)) {
+		return false;
+	}
+	return true;
+}
+
+bool destroy_static_info(VulkanStaticInfo *static_info) {
+	if (!terminate_window(static_info->system_window)) {
+		return false;
+	}
+	if (!destroy_surface(static_info)) {
+		return false;
+	}
+	if (!destroy_instance(static_info)) {
 		return false;
 	}
 	return true;
@@ -76,9 +89,9 @@ bool create_instance(VkInstance *instance) {
 	return true;
 }
 
-bool destroy_instance(VulkanStaticInfo *vsi) {
+bool destroy_instance(VulkanStaticInfo *static_info) {
 
-	vkDestroyInstance(vsi->vulkan_instance, nullptr);
+	vkDestroyInstance(static_info->vulkan_instance, nullptr);
 
 	llog(LOG_DEBUG, "[INSTANCE] Vulkan instance successfully destroyed\n");
 
@@ -146,9 +159,9 @@ bool terminate_window(GLFWwindow *window) {
 	return true;
 }
 
-bool create_surface(VulkanStaticInfo *vsi) {
+bool create_surface(VulkanStaticInfo *static_info) {
 
-	auto res = glfwCreateWindowSurface(vsi->vulkan_instance, vsi->system_window, nullptr, &vsi->surface);
+	auto res = glfwCreateWindowSurface(static_info->vulkan_instance, static_info->system_window, nullptr, &static_info->surface);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[SURFACE] Could not create the Vulkan Surface: %s\n", VkResult_str(res));
 		return false;
@@ -159,9 +172,9 @@ bool create_surface(VulkanStaticInfo *vsi) {
 	return true;
 }
 
-bool destroy_surface(VulkanStaticInfo *vsi) {
+bool destroy_surface(VulkanStaticInfo *static_info) {
 
-	vkDestroySurfaceKHR(vsi->vulkan_instance, vsi->surface, nullptr);
+	vkDestroySurfaceKHR(static_info->vulkan_instance, static_info->surface, nullptr);
 
 	llog(LOG_DEBUG, "[DEBUG] Surface successfully destroyed\n");
 
@@ -184,16 +197,16 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 	return res;
 }
 
-bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo *vsi) {
+bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo *static_info) {
 
 	uint32_t count = 0;
-	vkEnumeratePhysicalDevices(vsi->vulkan_instance, &count, nullptr);
+	vkEnumeratePhysicalDevices(static_info->vulkan_instance, &count, nullptr);
 
 	llog(LOG_DEBUG, "[PHYSICAL DEVICE] count = %d\n", count);
 
 	VkPhysicalDevice *devs = malloc(count * sizeof(VkPhysicalDevice));
 	TEST_MALLOC(devs)
-	vkEnumeratePhysicalDevices(vsi->vulkan_instance, &count, devs);
+	vkEnumeratePhysicalDevices(static_info->vulkan_instance, &count, devs);
 
 	VkPhysicalDevice chosen_dev;
 
@@ -208,7 +221,7 @@ bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo 
 		free(devs);
 		return false;
 	}
-	vsi->physical_dev = chosen_dev;
+	static_info->physical_dev = chosen_dev;
 
 	free(devs);
 
