@@ -63,6 +63,14 @@ constexpr unsigned PHYSICAL_EXTENSIONS_COUNT = sizeof(PHYSICAL_EXTENSIONS) / siz
 #define NGV_ENGINE_VERSION      VK_MAKE_VERSION(0, 0, 1)
 
 // ------------------------------------------------------------------------------------------------
+// DYNAMIC STATE
+// ------------------------------------------------------------------------------------------------
+
+constexpr VkDynamicState PIPELINE_DYNAMIC_STATE[]     = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}; // Do i really need these as dynamic state?
+constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_STATE) / sizeof(PIPELINE_DYNAMIC_STATE[0]);
+
+
+// ------------------------------------------------------------------------------------------------
 // MAGIC_NUMBERS
 // ------------------------------------------------------------------------------------------------
 

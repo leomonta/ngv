@@ -380,6 +380,7 @@ bool destroy_swapchain(VulkanRuntimeInfo *vri) {
 
 	return true;
 }
+
 bool create_depth_objects(VulkanRuntimeInfo *vri) {
 	create_image(
 	    vri,

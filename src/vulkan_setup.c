@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "logger.h"
+#include "shader.h"
 #include "vkinit_utils.h"
 
 /*
@@ -26,25 +27,50 @@ typedef struct {
 #define NEEDED_QUEUES       (GRAPHIC_QUEUE | PRESENT_QUEUE | TRANSFER_QUEUE)
 #define NEEDED_QUEUES_COUNT 3
 
-bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
+bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
 
-	if (!create_logical_device(vsi, static_info)) {
+	if (!create_logical_device(setup_info, static_info)) {
 		return false;
 	}
 
-	if (!create_swapchain(vsi, static_info)) {
+	if (!create_swapchain(setup_info, static_info)) {
 		return false;
 	}
 
-	if (!create_swapchain_image_views(vsi)) {
+	if (!create_swapchain_image_views(setup_info)) {
 		return false;
 	}
 
-	if (!create_framebuffers(vri)) {
+	if (!create_depth_objects(setup_info, static_info->physical_dev)) {
 		return false;
 	}
 
-	if (!create_depth_objects(vri)) {
+	if (!create_framebuffers(setup_info)) {
+		return false;
+	}
+
+	if (!create_pipeline(setup_info, settings)) {
+		return false;
+	}
+
+	return true;
+}
+
+bool destroy_setup_info(VulkanSetupInfo *setup_info) {
+
+	if (!destroy_swapchain(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_depth_objects(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_framebuffers(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_logical_device(setup_info->logical_dev)) {
 		return false;
 	}
 
@@ -103,19 +129,19 @@ bool get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface, QueuesInd
 	return true;
 }
 
-bool create_logical_device(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
+bool create_logical_device(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
 
-	if (get_queue_families(static_info->physical_dev, static_info->surface, &vsi->device_queues_indices)) {
+	if (get_queue_families(static_info->physical_dev, static_info->surface, &setup_info->device_queues_indices)) {
 		return false;
 	}
 
 	// if GRAPHIC_QUEUE_INDEX, TRANSFER_QUEUE_INDEX, or PRESENT_QUEUE_INDEX are not set
-	if ((vsi->device_queues_indices.available_families & NEEDED_QUEUES) != NEEDED_QUEUES) {
+	if ((setup_info->device_queues_indices.available_families & NEEDED_QUEUES) != NEEDED_QUEUES) {
 		llog(LOG_ERROR, "[LOGICAL DEVICE] Could not satisfy the required queues necessary\n");
 		return false;
 	}
 
-	uint32_t                needed_queues[NEEDED_QUEUES_COUNT] = {vsi->device_queues_indices.graphics, vsi->device_queues_indices.present, vsi->device_queues_indices.transfer};
+	uint32_t                needed_queues[NEEDED_QUEUES_COUNT] = {setup_info->device_queues_indices.graphics, setup_info->device_queues_indices.present, setup_info->device_queues_indices.transfer};
 	VkDeviceQueueCreateInfo q_create[NEEDED_QUEUES_COUNT]      = {};
 
 	// I need to ensure that if a queue family supports multiple functionalities
@@ -174,26 +200,26 @@ bool create_logical_device(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) 
 	    .pNext                   = nullptr,
 	};
 
-	auto res = vkCreateDevice(static_info->physical_dev, &dev_create, nullptr, &vsi->logical_dev);
+	auto res = vkCreateDevice(static_info->physical_dev, &dev_create, nullptr, &setup_info->logical_dev);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[LOGICAL DEVICE] Could not create the Vulkan Logical device: %s\n", VkResult_str(res));
 		return false;
 	}
 
-	vkGetDeviceQueue(vsi->logical_dev, vsi->device_queues_indices.graphics, 0, &vsi->device_queues.graphics);
-	vkGetDeviceQueue(vsi->logical_dev, vsi->device_queues_indices.present, 0, &vsi->device_queues.present);
-	// vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.compute, 0, &vri->device_queues.compure);
-	vkGetDeviceQueue(vsi->logical_dev, vsi->device_queues_indices.transfer, 0, &vsi->device_queues.transfer);
-	// vkGetDeviceQueue(vri->logical_dev, vri->device_queues_indices.sparse_binding, 0, &vri->device_queues.sparse_binding);
+	vkGetDeviceQueue(setup_info->logical_dev, setup_info->device_queues_indices.graphics, 0, &setup_info->device_queues.graphics);
+	vkGetDeviceQueue(setup_info->logical_dev, setup_info->device_queues_indices.present, 0, &setup_info->device_queues.present);
+	// vkGetDeviceQueue(setup_info->logical_dev, setup_info->device_queues_indices.compute, 0, &setup_info->device_queues.compure);
+	vkGetDeviceQueue(setup_info->logical_dev, setup_info->device_queues_indices.transfer, 0, &setup_info->device_queues.transfer);
+	// vkGetDeviceQueue(setup_info->logical_dev, setup_info->device_queues_indices.sparse_binding, 0, &setup_info->device_queues.sparse_binding);
 
 	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully created\n");
 
 	return true;
 }
 
-bool destroy_logical_device(VulkanRuntimeInfo *vsi) {
+bool destroy_logical_device(VkDevice logical_dev) {
 
-	vkDestroyDevice(vsi->logical_dev, nullptr);
+	vkDestroyDevice(logical_dev, nullptr);
 
 	llog(LOG_DEBUG, "[LOGICAL DEVICE] Logical device successfully destroyed\n");
 
@@ -284,13 +310,13 @@ SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR sur
 	return res;
 }
 
-bool create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
+bool create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
 
 	SwapchainDetails scd = get_swapchain_details(static_info->physical_dev, static_info->surface);
 
-	auto format           = pick_swapchain_format(scd.formats, scd.formats_count);
-	auto mode             = pick_swapchain_mode(scd.modes, scd.modes_count);
-	vsi->swapchain.extent = pick_swapchain_extent(&scd.capabilities, static_info->system_window);
+	auto format                  = pick_swapchain_format(scd.formats, scd.formats_count);
+	auto mode                    = pick_swapchain_mode(scd.modes, scd.modes_count);
+	setup_info->swapchain.extent = pick_swapchain_extent(&scd.capabilities, static_info->system_window);
 
 	uint32_t image_count = scd.capabilities.minImageCount + 1;
 
@@ -305,7 +331,7 @@ bool create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
 	    .minImageCount         = image_count,
 	    .imageFormat           = format.format,
 	    .imageColorSpace       = format.colorSpace,
-	    .imageExtent           = vsi->swapchain.extent,
+	    .imageExtent           = setup_info->swapchain.extent,
 	    .imageArrayLayers      = 1,
 	    .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	    .imageSharingMode      = 0,       // later
@@ -320,9 +346,9 @@ bool create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
 	    .pNext                 = nullptr,
 	};
 
-	uint32_t queue_indices[] = {vsi->device_queues_indices.graphics, vsi->device_queues_indices.present};
+	uint32_t queue_indices[] = {setup_info->device_queues_indices.graphics, setup_info->device_queues_indices.present};
 
-	if (vsi->device_queues_indices.graphics != vsi->device_queues_indices.present) {
+	if (setup_info->device_queues_indices.graphics != setup_info->device_queues_indices.present) {
 		sc_create.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
 		sc_create.queueFamilyIndexCount = 2;
 		sc_create.pQueueFamilyIndices   = queue_indices;
@@ -334,26 +360,26 @@ bool create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info) {
 
 	VkSwapchainKHR sc;
 
-	auto res = vkCreateSwapchainKHR(vsi->logical_dev, &sc_create, nullptr, &sc);
+	auto res = vkCreateSwapchainKHR(setup_info->logical_dev, &sc_create, nullptr, &sc);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[SWAPCHAIN] Could not create the Swapchain: %s\n", VkResult_str(res));
 		return false;
 	}
 
-	vsi->swapchain.swapchain = sc;
-	vsi->swapchain.format    = format.format;
+	setup_info->swapchain.swapchain = sc;
+	setup_info->swapchain.format    = format.format;
 
 	free(scd.formats);
 	free(scd.modes);
 
 	// retrieving images
-	vkGetSwapchainImagesKHR(vsi->logical_dev, sc, &vsi->swapchain.buffers_count, nullptr);
+	vkGetSwapchainImagesKHR(setup_info->logical_dev, sc, &setup_info->swapchain.buffers_count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
 	// I can exploit the fact the when i recreate the swapchain `cleanup_swapchain` does not free the pointer, just need to ensure that the defualt value is nullptr
-	vsi->swapchain.buffers = realloc(vsi->swapchain.buffers, sizeof(VkImage) * vsi->swapchain.buffers_count);
-	TEST_MALLOC(vsi->swapchain.buffers);
-	vkGetSwapchainImagesKHR(vsi->logical_dev, sc, &vsi->swapchain.buffers_count, vsi->swapchain.buffers);
+	setup_info->swapchain.buffers = realloc(setup_info->swapchain.buffers, sizeof(VkImage) * setup_info->swapchain.buffers_count);
+	TEST_MALLOC(setup_info->swapchain.buffers);
+	vkGetSwapchainImagesKHR(setup_info->logical_dev, sc, &setup_info->swapchain.buffers_count, setup_info->swapchain.buffers);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully created\n");
 
@@ -408,66 +434,9 @@ bool cleanup_swapchain(VulkanSetupInfo *setup_info) {
 		vkDestroyImageView(setup_info->logical_dev, setup_info->swapchain.views[i], nullptr);
 	}
 
-	// destroy_depth_objects(vri);
+	// destroy_depth_objects(setup_info);
 
 	vkDestroySwapchainKHR(setup_info->logical_dev, setup_info->swapchain.swapchain, nullptr);
-
-	return true;
-}
-
-uint32_t find_memory_type(const uint32_t type_filter, VkMemoryPropertyFlags properties, VulkanStaticInfo *static_info) {
-
-	VkPhysicalDeviceMemoryProperties phy_props;
-	vkGetPhysicalDeviceMemoryProperties(static_info->physical_dev, &phy_props);
-
-	for (uint32_t i = 0; i < phy_props.memoryTypeCount; i++) {
-		if ((type_filter & (1 << i)) && (phy_props.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-
-	llog(LOG_FATAL, "[VMEM] Failed to find a suitable memory type\n");
-	return (uint32_t)(-1);
-}
-
-bool create_image(VulkanRuntimeInfo *vri, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage *image, VkDeviceMemory *image_mem) {
-
-	VkImageCreateInfo img_info = {};
-	img_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	img_info.imageType         = VK_IMAGE_TYPE_2D;
-	img_info.extent.width      = (uint32_t)(width);
-	img_info.extent.height     = (uint32_t)(height);
-	img_info.extent.depth      = 1;
-	img_info.mipLevels         = 1;
-	img_info.arrayLayers       = 1;
-	img_info.format            = format;
-	img_info.tiling            = tiling;
-	img_info.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-	img_info.usage             = usage;
-	img_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
-	img_info.samples           = VK_SAMPLE_COUNT_1_BIT;
-	img_info.flags             = 0; // Optional
-
-	auto res = vkCreateImage(vri->logical_dev, &img_info, nullptr, image);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[TEXTURE] Could not create texture: %s\n", VkResult_str(res));
-	}
-
-	VkMemoryRequirements mem_req;
-	vkGetImageMemoryRequirements(vri->logical_dev, *image, &mem_req);
-
-	VkMemoryAllocateInfo alloc_info = {};
-	alloc_info.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	alloc_info.allocationSize       = mem_req.size;
-	alloc_info.memoryTypeIndex      = find_memory_type(mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vri);
-
-	res = vkAllocateMemory(vri->logical_dev, &alloc_info, nullptr, image_mem);
-	if (res != VK_SUCCESS) {
-		llog(LOG_FATAL, "[TEXTURE] Could not allocate memory for the texture: %s\n", VkResult_str(res));
-		return false;
-	}
-
-	vkBindImageMemory(vri->logical_dev, *image, *image_mem, 0);
 
 	return true;
 }
@@ -495,11 +464,11 @@ bool re_create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_i
 		return false;
 	}
 
-	if (!create_framebuffers(vri)) {
+	if (!create_framebuffers(setup_info)) {
 		return false;
 	}
 
-	if (!create_depth_objects(vri)) {
+	if (!create_depth_objects(setup_info, static_info->physical_dev)) {
 		return false;
 	}
 
@@ -511,12 +480,298 @@ bool re_create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_i
 bool destroy_swapchain(VulkanSetupInfo *setup_info) {
 
 	free(setup_info->swapchain.buffers);
-	setup_info->swapchain.buffers = nullptr;
-	vri->swapchain.buffers_count  = 0;
+	setup_info->swapchain.buffers       = nullptr;
+	setup_info->swapchain.buffers_count = 0;
 
-	vkDestroySwapchainKHR(vri->logical_dev, vri->swapchain.swapchain, nullptr);
+	vkDestroySwapchainKHR(setup_info->logical_dev, setup_info->swapchain.swapchain, nullptr);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully destroyed\n");
+
+	return true;
+}
+
+bool create_depth_objects(VulkanSetupInfo *setup_info, VkPhysicalDevice physical_dev) {
+
+	create_image(
+	    setup_info->logical_dev,
+	    physical_dev,
+	    setup_info->swapchain.extent.width,
+	    setup_info->swapchain.extent.height,
+	    VK_FORMAT_D32_SFLOAT_S8_UINT,
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	    &setup_info->depth_objects.image,
+	    &setup_info->depth_objects.memory);
+
+	VkImageViewCreateInfo vw_create = {
+	    .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+	    .image                           = setup_info->depth_objects.image,
+	    .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
+	    .format                          = VK_FORMAT_D32_SFLOAT_S8_UINT,
+	    .components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
+	    .subresourceRange.baseMipLevel   = 0,
+	    .subresourceRange.levelCount     = 1,
+	    .subresourceRange.baseArrayLayer = 0,
+	    .subresourceRange.layerCount     = 1,
+	    .flags                           = 0,
+	    .pNext                           = nullptr,
+	};
+
+	auto res = vkCreateImageView(setup_info->logical_dev, &vw_create, nullptr, &setup_info->depth_objects.view);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DEPTH BUFFER] Could not create image views: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	// transition_image_layout(setup_info, setup_info->depth_objects.image, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+	llog(LOG_DEBUG, "[DEPTH BUFFER] Depth buffer objects successfully created.\n");
+
+	return true;
+}
+
+bool destroy_depth_objects(VulkanSetupInfo *setup_info) {
+
+	vkDestroyImage(setup_info->logical_dev, setup_info->depth_objects.image, nullptr);
+	vkFreeMemory(setup_info->logical_dev, setup_info->depth_objects.memory, nullptr);
+	vkDestroyImageView(setup_info->logical_dev, setup_info->depth_objects.view, nullptr);
+
+	llog(LOG_DEBUG, "[DEPTH BUFFER] Depth buffer objects successfully destroyed.\n");
+
+	return true;
+}
+
+bool create_framebuffers(VulkanSetupInfo *setup_info) {
+
+	setup_info->swapchain.framebuffers = _realloc(setup_info->swapchain.framebuffers, sizeof(VkFramebuffer) * setup_info->swapchain.buffers_count);
+	TEST_MALLOC(setup_info->swapchain.framebuffers)
+
+	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
+		VkImageView attachments[2] = {
+		    setup_info->swapchain.views[i],
+		    setup_info->depth_objects.view};
+
+		VkFramebufferCreateInfo fb_create = {};
+		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		fb_create.renderPass              = setup_info->renderpass;
+		fb_create.attachmentCount         = 2;
+		fb_create.pAttachments            = attachments;
+		fb_create.width                   = setup_info->swapchain.extent.width;
+		fb_create.height                  = setup_info->swapchain.extent.height;
+		fb_create.layers                  = 1;
+
+		auto res = vkCreateFramebuffer(setup_info->logical_dev, &fb_create, nullptr, &setup_info->swapchain.framebuffers[i]);
+		if (res != VK_SUCCESS) {
+			llog(LOG_FATAL, "[FRAMBUFFER] Could not create a frambuffer: %s\n", VkResult_str(res));
+			free(setup_info->swapchain.framebuffers);
+			return false;
+		}
+	}
+
+	llog(LOG_DEBUG, "[FRAMBUFFER] frambuffers successfully created\n");
+
+	return true;
+}
+
+bool destroy_framebuffers(VulkanSetupInfo *setup_info) {
+
+	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
+		vkDestroyFramebuffer(setup_info->logical_dev, setup_info->swapchain.framebuffers[i], nullptr);
+	}
+	free(setup_info->swapchain.framebuffers);
+	setup_info->swapchain.framebuffers = nullptr;
+
+	llog(LOG_DEBUG, "[FRAMBUFFER] framebuffers successfully destroyed\n");
+	return true;
+}
+
+bool create_pipeline(const VulkanSetupSettings settings, VulkanSetupInfo *setup_info) {
+	shaderc_compilation_result_t vert_res;
+	VkShaderModule               vert_module = {};
+
+	create_shader_module("../shaders/main.vert", VERTEX_SHADER, setup_info->logical_dev, &vert_module, &vert_res);
+
+	shaderc_compilation_result_t frag_res;
+	VkShaderModule               frag_module = {};
+
+	create_shader_module("../shaders/main.frag", FRAGMENT_SHADER, setup_info->logical_dev, &frag_module, &frag_res);
+
+	VkPipelineShaderStageCreateInfo vert_stage_create = {};
+	vert_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vert_stage_create.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
+	vert_stage_create.module                          = vert_module;
+	vert_stage_create.pName                           = "main";
+
+	VkPipelineShaderStageCreateInfo frag_stage_create = {};
+	frag_stage_create.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	frag_stage_create.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
+	frag_stage_create.module                          = frag_module;
+	frag_stage_create.pName                           = "main";
+
+	VkPipelineShaderStageCreateInfo sh_stages[] = {vert_stage_create, frag_stage_create};
+
+	VkPipelineDynamicStateCreateInfo dn_create = {};
+	dn_create.sType                            = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dn_create.dynamicStateCount                = PIPELINE_DYNAMIC_STATE_COUNT;
+	dn_create.pDynamicStates                   = PIPELINE_DYNAMIC_STATE;
+
+	// TODO: set the correct layout
+	// maybe ask for some kind of struct to base the layout to
+	VkPipelineVertexInputStateCreateInfo vl_create = {};
+	vl_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vl_create.vertexBindingDescriptionCount        = 1;
+	vl_create.pVertexBindingDescriptions           = &Vertex_layout;
+	vl_create.vertexAttributeDescriptionCount      = Vertex_attributes_num;
+	vl_create.pVertexAttributeDescriptions         = Vertex_attribs;
+
+	// TODO: make this changeable for the user
+	VkPipelineInputAssemblyStateCreateInfo ia_create = {};
+	ia_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	ia_create.topology                               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	ia_create.primitiveRestartEnable                 = VK_FALSE;
+
+	VkPipelineViewportStateCreateInfo vp_create = {};
+	vp_create.sType                             = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	vp_create.viewportCount                     = 1;
+	vp_create.scissorCount                      = 1;
+
+	VkPipelineRasterizationStateCreateInfo rt_create = {};
+	rt_create.sType                                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rt_create.depthClampEnable                       = VK_FALSE;
+	rt_create.rasterizerDiscardEnable                = VK_FALSE;
+	rt_create.polygonMode                            = VK_POLYGON_MODE_FILL; // TODO: settable wireframe here
+	rt_create.lineWidth                              = 1.0f;
+	rt_create.cullMode                               = VK_CULL_MODE_NONE;
+	// rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
+	rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;
+	rt_create.depthBiasEnable                        = VK_FALSE;
+
+	// TODO: This should probably be enabled
+	VkPipelineMultisampleStateCreateInfo multisampling_create = {};
+	multisampling_create.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling_create.sampleShadingEnable                  = VK_FALSE;
+	multisampling_create.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
+	multisampling_create.minSampleShading                     = 1.0f;     // Optional
+	multisampling_create.pSampleMask                          = nullptr;  // Optional
+	multisampling_create.alphaToCoverageEnable                = VK_FALSE; // Optional
+	multisampling_create.alphaToOneEnable                     = VK_FALSE; // Optional
+
+	VkPipelineColorBlendAttachmentState colorblend_attach = {};
+	colorblend_attach.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorblend_attach.blendEnable                         = VK_FALSE;
+	colorblend_attach.blendEnable                         = VK_TRUE;
+	colorblend_attach.srcColorBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorblend_attach.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorblend_attach.colorBlendOp                        = VK_BLEND_OP_ADD;
+	colorblend_attach.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE;
+	colorblend_attach.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ZERO;
+	colorblend_attach.alphaBlendOp                        = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo colorblend_create = {};
+	colorblend_create.sType                               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorblend_create.logicOpEnable                       = VK_FALSE;
+	colorblend_create.attachmentCount                     = 1;
+	colorblend_create.pAttachments                        = &colorblend_attach;
+
+	VkDescriptorSetLayoutBinding mvp_binding = {};
+	mvp_binding.binding                      = 0;
+	mvp_binding.descriptorType               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvp_binding.descriptorCount              = 1;
+	mvp_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT;
+	mvp_binding.pImmutableSamplers           = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding sampl_binding = {};
+	sampl_binding.binding                      = 1;
+	sampl_binding.descriptorType               = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	sampl_binding.descriptorCount              = 1;
+	sampl_binding.stageFlags                   = VK_SHADER_STAGE_FRAGMENT_BIT;
+	sampl_binding.pImmutableSamplers           = nullptr;
+
+	VkDescriptorSetLayoutBinding bindings[2] = {mvp_binding, sampl_binding};
+
+	VkDescriptorSetLayoutCreateInfo layout_info = {};
+	layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layout_info.bindingCount                    = 2;
+	layout_info.pBindings                       = bindings;
+
+	auto res = vkCreateDescriptorSetLayout(setup_info->logical_dev, &layout_info, nullptr, &setup_info->pipeline.descriptor_set_layout);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPLINE] Failed to create descriptor set layout!: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[PIPELINE] Uniform descroptor set layout successfully created\n");
+
+	VkPipelineLayoutCreateInfo pipeline_layout = {};
+	pipeline_layout.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipeline_layout.setLayoutCount             = 1;
+	pipeline_layout.pSetLayouts                = &setup_info->pipeline.descriptor_set_layout;
+	pipeline_layout.pushConstantRangeCount     = 0;       // Optional
+	pipeline_layout.pPushConstantRanges        = nullptr; // Optional
+
+	res = vkCreatePipelineLayout(setup_info->logical_dev, &pipeline_layout, nullptr, &setup_info->pipeline.layout);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[PIPELINE] Pipeline layout successfully crated\n");
+
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_create = {};
+	depth_stencil_create.sType                                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depth_stencil_create.depthTestEnable                       = VK_TRUE;
+	depth_stencil_create.depthWriteEnable                      = VK_TRUE;
+	depth_stencil_create.depthCompareOp                        = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depth_stencil_create.depthBoundsTestEnable                 = VK_FALSE;
+	depth_stencil_create.minDepthBounds                        = 0.0f; // Optional
+	depth_stencil_create.maxDepthBounds                        = 1.0f; // Optional
+	depth_stencil_create.stencilTestEnable                     = VK_FALSE;
+
+	VkGraphicsPipelineCreateInfo pipeline_create = {};
+	pipeline_create.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipeline_create.stageCount                   = 2;
+	pipeline_create.pStages                      = sh_stages;
+	pipeline_create.pVertexInputState            = &vl_create;
+	pipeline_create.pInputAssemblyState          = &ia_create;
+	pipeline_create.pViewportState               = &vp_create;
+	pipeline_create.pRasterizationState          = &rt_create;
+	pipeline_create.pMultisampleState            = &multisampling_create;
+	pipeline_create.pDepthStencilState           = &depth_stencil_create;
+	pipeline_create.pColorBlendState             = &colorblend_create;
+	pipeline_create.pDynamicState                = &dn_create;
+	pipeline_create.layout                       = setup_info->pipeline.layout;
+	pipeline_create.renderPass                   = setup_info->renderpass;
+	pipeline_create.subpass                      = 0;
+
+	res = vkCreateGraphicsPipelines(setup_info->logical_dev, VK_NULL_HANDLE, 1, &pipeline_create, nullptr, &setup_info->pipeline.object);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[PIPELINE] Could not create the pipeline layout: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	vkDestroyShaderModule(setup_info->logical_dev, vert_module, nullptr);
+	release_shader(vert_res);
+	vkDestroyShaderModule(setup_info->logical_dev, frag_module, nullptr);
+	release_shader(frag_res);
+
+	llog(LOG_DEBUG, "[PIPELINE] Graphics pipeline successfully crated\n");
+
+	return true;
+}
+
+bool destroy_pipeline(VulkanSetupInfo *setup_info) {
+	vkDestroyPipeline(setup_info->logical_dev, setup_info->pipeline.object, nullptr);
+	vkDestroyPipelineLayout(setup_info->logical_dev, setup_info->pipeline.layout, nullptr);
+	vkDestroyDescriptorSetLayout(setup_info->logical_dev, setup_info->pipeline.descriptor_set_layout, nullptr);
+
+	llog(LOG_DEBUG, "[PIPELINE] Graphics pipeline successfully destroyed\n");
 
 	return true;
 }

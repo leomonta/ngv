@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 // just a standard
 typedef uint32_t bitfield;
@@ -21,6 +22,26 @@ typedef uint64_t longBitfield;
 		llog(LOG_FATAL, "[MEM] 'malloc' failed: %s\n", strerror(errno)); \
 		return ret;                                                      \
 	}
+
+/**
+ * a realloc re-implemetation to behave like I want
+ * if ptr == NULL || ptr == nullptr return malloc(size)
+ * if size == 0 && ptr != NULL && ptr != nullptr free(ptr)
+ * else return realloc(pre, size)
+ */
+void *_realloc(void *ptr, size_t size) {
+
+	if (ptr == NULL || ptr == nullptr) {
+		return malloc(size);
+	}
+
+	if (size == 0 && ptr != NULL && ptr != nullptr) {
+		free(ptr);
+		return nullptr;
+	}
+
+	return realloc(ptr, size);
+}
 
 /**
  * Retrives the values at index `i` from the bitfield `bf`

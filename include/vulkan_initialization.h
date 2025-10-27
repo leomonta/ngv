@@ -9,24 +9,6 @@
 bool check_validation_layer_support();
 
 /**
- * Creates a `VkInstance`
- *
- * @param[out] `vri` the vulkan context where to put the created instance
- *
- * @return if the operation was successfull or not
- */
-bool create_instance(VulkanRuntimeInfo *vri);
-
-/**
- * Destroy a `VkInstance` and its associated data
- *
- * @param[in] `vri` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool destroy_instance(VulkanRuntimeInfo *vri);
-
-/**
  * Creates a vulkan callback to attach to the validation layer
  * It uses the logger function
  *

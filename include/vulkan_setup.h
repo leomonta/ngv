@@ -15,59 +15,103 @@
 // SwapchainInfo    swapchain;
 //} VulkanSetupInfo;
 
-bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *vsi, VulkanStaticInfo *static_info);
+bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
+
+bool destroy_setup_info(VulkanSetupInfo *setup_info);
 
 /**
  * Creates a logical device (`VkDevice`) based on the physical device
  *
- * @param[in] `vri` the vulkan context where to put the logical device
+ * @param[in] `setup_info` the vulkan context where to put the logical device
  *
  * @return `true` if successfull, `false` if no suitable device (or at all) was found
  */
-bool create_logical_device(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info);
+bool create_logical_device(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
 
 /**
  * Destroy a `VkDevice` and its associated data
  *
- * @param[in] `vri` the vulkan context to use
+ * @param[in] `logical_dev` the logical device to destroy
  *
  * @return if the operation was successfull or not
  */
-bool destroy_logical_device(VulkanRuntimeInfo *vsi);
+bool destroy_logical_device(VkDevice logical_dev);
 
 /**
  * Creates a swapchain based on the best formats and modes available
  *
- * @param[in] `vri` the vulkan context to use
+ * @param[in] `setup_info` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info);
+bool create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
 
 /**
  * destroys the old swapchain and creates it anew
  * useful for when the viewport has changed
  *
- * @param[in] `vri` the vulkan context to use
+ * @param[in] `setup_info` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool re_create_swapchain(VulkanSetupInfo *vsi, VulkanStaticInfo *static_info);
+bool re_create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
 
 /**
  * Destroy a swapchain and its associated data
  *
- * @param[in] `vri` the vulkan context to use
+ * @param[in] `setup_info` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool destroy_swapchain(VulkanRuntimeInfo *vri);
+bool destroy_swapchain(VulkanSetupInfo *setup_info);
 
 /**
  * Creates images views for the swapchain images
  *
- * @param[in] `vri` the vulkan context to use
+ * @param[in] `setup_info` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool create_swapchain_image_views(VulkanSetupInfo *vsi);
+bool create_swapchain_image_views(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates the depth buffer and linked objects
+ *
+ * @param[in] `setup_info` the setup information necessary
+ * @param[in] `physical_dev` physical device to create the images
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_depth_objects(VulkanSetupInfo *setup_info, VkPhysicalDevice physical_dev);
+
+/**
+ * Destroys the depth buffer and connected objects
+ *
+ * @param[in] `setup_info` the setup information necessary
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_depth_objects(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates the framebuffer and its linked resources
+ *
+ * @param[in] `setup_info` the setup information necessary
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_framebuffers(VulkanSetupInfo *setup_info);
+
+/**
+ * Destroy the framebuffer and its linked resources
+ *
+ * @param[in] `setup_info` the setup information necessary
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_framebuffers(VulkanSetupInfo *setup_info);
+
+
+bool create_pipeline(const VulkanSetupSettings settings, VulkanSetupInfo *setup_info);
+
+bool destroy_pipeline(VulkanSetupInfo *setup_info);

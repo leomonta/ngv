@@ -6,13 +6,13 @@
 
 #include <string.h>
 
-uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri) {
+uint32_t find_memory_type(const uint32_t type_filter, VkMemoryPropertyFlags properties, VkPhysicalDevice physical_dev) {
 
 	VkPhysicalDeviceMemoryProperties phy_props;
-	vkGetPhysicalDeviceMemoryProperties(vri->physical_dev, &phy_props);
+	vkGetPhysicalDeviceMemoryProperties(physical_dev, &phy_props);
 
 	for (uint32_t i = 0; i < phy_props.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (phy_props.memoryTypes[i].propertyFlags & properties) == properties) {
+		if ((type_filter & (1 << i)) && (phy_props.memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
 		}
 	}

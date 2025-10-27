@@ -2,7 +2,7 @@
 
 #include "ngv_objects.h"
 
-uint32_t find_memory_type(const uint32_t typeFilter, VkMemoryPropertyFlags properties, VulkanRuntimeInfo *vri);
+uint32_t find_memory_type(const uint32_t type_filter, VkMemoryPropertyFlags properties, VkPhysicalDevice physical_dev);
 
 /***
  * Issues a copy command on the `vri` transfer queue from `stc` to `dst` of `size` bytes
