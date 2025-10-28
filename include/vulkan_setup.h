@@ -111,7 +111,6 @@ bool create_framebuffers(VulkanSetupInfo *setup_info);
  */
 bool destroy_framebuffers(VulkanSetupInfo *setup_info);
 
-
 bool create_pipeline(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info);
 
 bool destroy_pipeline(VulkanSetupInfo *setup_info);

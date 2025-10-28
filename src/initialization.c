@@ -92,6 +92,7 @@ bool init_vulkan(VulkanRuntimeInfo *vri) {
 	if (!create_pipeline(vri)) {
 		return false;
 	}
+
 	if (!create_command_pool(vri)) {
 		return false;
 	}

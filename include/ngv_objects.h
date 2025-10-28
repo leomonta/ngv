@@ -196,4 +196,4 @@ typedef struct {
 	VkDeviceMemory vertex_buff_mem;
 	FrameData      frame_data_objects;
 	TextureData    textures;
-} VulaknFrameData;
+} VulkanFrameData;

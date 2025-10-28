@@ -58,6 +58,10 @@ bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *set
 
 bool destroy_setup_info(VulkanSetupInfo *setup_info) {
 
+	if (!destroy_pipeline(setup_info)) {
+		return false;
+	}
+
 	if (!destroy_swapchain(setup_info)) {
 		return false;
 	}
