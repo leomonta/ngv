@@ -831,3 +831,41 @@ bool destroy_pipeline(VulkanSetupInfo *setup_info) {
 
 	return true;
 }
+
+bool create_command_pool(VulkanSetupInfo *setup_info) {
+
+	VkCommandPoolCreateInfo g_pool_crate = {};
+	g_pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	g_pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	g_pool_crate.queueFamilyIndex        = setup_info->device_queues_indices.graphics;
+
+	auto res = vkCreateCommandPool(setup_info->logical_dev, &g_pool_crate, nullptr, &setup_info->graphics_cmd_pool);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the graphics command pool: %s\n", VkResult_str(res));
+		return false;
+	}
+	llog(LOG_DEBUG, "[COMMAND POOL] Graphics command pool successfully created\n");
+
+	VkCommandPoolCreateInfo t_pool_crate = {};
+	t_pool_crate.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	t_pool_crate.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	t_pool_crate.queueFamilyIndex        = setup_info->device_queues_indices.transfer;
+
+	res = vkCreateCommandPool(setup_info->logical_dev, &t_pool_crate, nullptr, &setup_info->transfer_cmd_pool);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND POOL] Could not create create the transfer command pool: %s\n", VkResult_str(res));
+		return false;
+	}
+	llog(LOG_DEBUG, "[COMMAND POOL] Transfer command pool successfully created\n");
+
+	return true;
+}
+
+bool destroy_command_pool(VulkanSetupInfo *setup_info) {
+	vkDestroyCommandPool(setup_info->logical_dev, setup_info->graphics_cmd_pool, nullptr);
+	vkDestroyCommandPool(setup_info->logical_dev, setup_info->transfer_cmd_pool, nullptr);
+
+	llog(LOG_DEBUG, "[COMMAND POOL] Command pools successfully destroyed\n");
+
+	return true;
+}

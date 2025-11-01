@@ -111,6 +111,38 @@ bool create_framebuffers(VulkanSetupInfo *setup_info);
  */
 bool destroy_framebuffers(VulkanSetupInfo *setup_info);
 
+/**
+ * One of the most important steps of setup, there should be a lot of settings here
+ * Setups up the entire pipeline with attachments, shaders, vertex specification and etc
+ *
+ * @param[in] `settings` the setting to control pipiline creation fetures
+ * @param[in|out] `setup_info` where to put the created objects
+ *
+ * @return if the operation was successfull or not
+ */
 bool create_pipeline(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info);
 
+/**
+ * Destroy the pipeline and all of its related objects
+ *
+ * @return if the operation was successfull or not
+ */
 bool destroy_pipeline(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates the command pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_command_pool(VulkanSetupInfo *setup_info);
+
+/**
+ * Destroys the command pool
+ *
+ * @param[in] `vri` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_command_pool(VulkanSetupInfo *setup_info);
