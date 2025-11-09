@@ -190,10 +190,20 @@ typedef struct {
 // ------------------------------------------------------------------------------------------------
 
 typedef struct {
-	VkBuffer       index_buff;
-	VkDeviceMemory index_buff_mem;
-	VkBuffer       vertex_buff;
-	VkDeviceMemory vertex_buff_mem;
-	FrameData      frame_data_objects;
-	TextureData    textures;
+	VkPhysicalDevice physical_dev; // the same present in static info, just a shortcut
+	VkDevice         logical_dev;  // the same present in setup info, just a shortcut
+	VkBuffer         index_buff;
+	VkDeviceMemory   index_buff_mem;
+	VkBuffer         vertex_buff;
+	VkDeviceMemory   vertex_buff_mem;
+	VkCommandBuffer  cmd_buff[MAX_CONCURRENT_FRAMES];
+	VkSemaphore      image_available[MAX_CONCURRENT_FRAMES];
+	VkSemaphore      render_finished[MAX_CONCURRENT_FRAMES];
+	VkFence          in_flight_fence[MAX_CONCURRENT_FRAMES];
+	VkDescriptorSet  descriptor_sets[MAX_CONCURRENT_FRAMES];
+	VkBuffer         uniform_buff[MAX_CONCURRENT_FRAMES];
+	VkDeviceMemory   uniform_buff_mem[MAX_CONCURRENT_FRAMES];
+	void            *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
+	FrameData        frame_data_objects;
+	TextureData      textures;
 } VulkanFrameData;

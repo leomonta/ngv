@@ -3,7 +3,6 @@
 #include "config.h"
 #include "logger.h"
 #include "utils.h"
-#include "vulkan_initialization.h"
 #include "vulkan_memory.h"
 
 #include <errno.h>
