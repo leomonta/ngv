@@ -53,10 +53,26 @@ bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *set
 		return false;
 	}
 
+	if (!create_renderpass(setup_info)) {
+		return false;
+	}
+
+	if (!create_descriptor_pool(setup_info)) {
+		return false;
+	}
+
 	return true;
 }
 
 bool destroy_setup_info(VulkanSetupInfo *setup_info) {
+
+	if (!destroy_descriptor_pool(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_renderpass(setup_info)) {
+		return false;
+	}
 
 	if (!destroy_pipeline(setup_info)) {
 		return false;
@@ -866,6 +882,128 @@ bool destroy_command_pool(VulkanSetupInfo *setup_info) {
 	vkDestroyCommandPool(setup_info->logical_dev, setup_info->transfer_cmd_pool, nullptr);
 
 	llog(LOG_DEBUG, "[COMMAND POOL] Command pools successfully destroyed\n");
+
+	return true;
+}
+
+bool create_renderpass(VulkanSetupInfo *setup_info) {
+	VkAttachmentDescription attachments[2] = {};
+	// color
+	attachments[0].format                  = setup_info->swapchain.format;
+	attachments[0].samples                 = VK_SAMPLE_COUNT_1_BIT;
+	attachments[0].loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[0].storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[0].stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[0].stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[0].initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[0].finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// depth
+	attachments[1].format                  = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	attachments[1].samples                 = VK_SAMPLE_COUNT_1_BIT;
+	attachments[1].loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[1].stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[1].stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[1].initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[1].finalLayout             = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference color_ref = {};
+	color_ref.attachment            = 0;
+	color_ref.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depth_ref = {};
+	depth_ref.attachment            = 1;
+	depth_ref.layout                = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass    = {};
+	subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount    = 1;
+	subpass.pColorAttachments       = &color_ref;
+	subpass.pDepthStencilAttachment = &depth_ref;
+
+	VkSubpassDependency subpass_deps = {};
+	subpass_deps.srcSubpass          = VK_SUBPASS_EXTERNAL;
+	subpass_deps.dstSubpass          = 0;
+	subpass_deps.srcStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subpass_deps.srcAccessMask       = VK_ACCESS_NONE;
+	subpass_deps.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subpass_deps.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo renderpass_create = {};
+	renderpass_create.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderpass_create.attachmentCount        = 2;
+	renderpass_create.pAttachments           = attachments;
+	renderpass_create.subpassCount           = 1;
+	renderpass_create.pSubpasses             = &subpass;
+	renderpass_create.dependencyCount        = 1;
+	renderpass_create.pDependencies          = &subpass_deps;
+
+	auto res = vkCreateRenderPass(setup_info->logical_dev, &renderpass_create, nullptr, &setup_info->renderpass);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[RENDERPASS] Could not create the render pass: %s\n", VkResult_str(res));
+	}
+
+	llog(LOG_DEBUG, "[RENDERPASS] Renderpass successfully created\n");
+	return true;
+}
+
+bool destroy_renderpass(VulkanSetupInfo *setup_info) {
+
+	vkDestroyRenderPass(setup_info->logical_dev, setup_info->renderpass, nullptr);
+
+	llog(LOG_DEBUG, "[RENDERPASS] Renderpass successfully destroyed\n");
+
+	return true;
+}
+
+
+bool create_descriptor_pool(VulkanSetupInfo *setup_info) {
+	VkDescriptorPoolSize pool_sz[2] = {};
+	pool_sz[0]                      = (VkDescriptorPoolSize){};
+	pool_sz[0].type                 = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sz[0].descriptorCount      = MAX_CONCURRENT_FRAMES;
+	pool_sz[1]                      = (VkDescriptorPoolSize){};
+	pool_sz[1].type                 = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	pool_sz[1].descriptorCount      = MAX_CONCURRENT_FRAMES;
+
+	VkDescriptorPoolCreateInfo dp_info = {};
+	dp_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	dp_info.poolSizeCount              = 2;
+	dp_info.pPoolSizes                 = pool_sz;
+	dp_info.maxSets                    = MAX_CONCURRENT_FRAMES;
+
+	auto res = vkCreateDescriptorPool(setup_info->logical_dev, &dp_info, nullptr, &setup_info->descriptor_pool);
+
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[DESCRIPTOR POOL] Could not create the descriptor pool: %s\n", VkResult_str(res));
+	}
+	llog(LOG_DEBUG, "[DESCRIPTOR POOL] Descriptor pool successfully created\n");
+
+	return true;
+}
+
+bool destroy_descriptor_pool(VulkanSetupInfo *setup_info) {
+	vkDestroyDescriptorPool(setup_info->logical_dev, setup_info->descriptor_pool, nullptr);
+
+	llog(LOG_DEBUG, "[DESCRIPTOR POOL] Descriptor pool successfully destroyed\n");
+	return true;
+}
+
+bool create_command_buffer(VulkanSetupInfo *setup_info) {
+
+	VkCommandBufferAllocateInfo t_cmd_crate = {};
+	t_cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	t_cmd_crate.commandPool                 = setup_info->transfer_cmd_pool;
+	t_cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	t_cmd_crate.commandBufferCount          = 1;
+
+	auto res = vkAllocateCommandBuffers(setup_info->logical_dev, &t_cmd_crate, &setup_info->transfer_cmd_buff);
+	if (res != VK_SUCCESS) {
+		llog(LOG_FATAL, "[COMMAND BUFFER] Could not create the transfer command buffer: %s\n", VkResult_str(res));
+		return false;
+	}
+
+	llog(LOG_DEBUG, "[COMMAND BUFFER] Transfer command buffer successfully created\n");
 
 	return true;
 }

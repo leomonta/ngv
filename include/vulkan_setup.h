@@ -146,3 +146,49 @@ bool create_command_pool(VulkanSetupInfo *setup_info);
  * @return if the operation was successfull or not
  */
 bool destroy_command_pool(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates the graphics pipleline with all of its stages
+ * shaders, vertexes layout, uniforms...
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_renderpass(VulkanSetupInfo *setup_info);
+
+/**
+ * Destroys the pipeline
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_renderpass(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates a descriptor pool
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_descriptor_pool(VulkanSetupInfo *setup_info);
+
+/**
+ * Destroys the descriptor pool
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_descriptor_pool(VulkanSetupInfo *setup_info);
+
+/**
+ * Creates the command buffer
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_command_buffer(VulkanSetupInfo *setup_info);
