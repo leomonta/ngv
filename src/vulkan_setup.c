@@ -27,7 +27,7 @@ typedef struct {
 #define NEEDED_QUEUES       (GRAPHIC_QUEUE | PRESENT_QUEUE | TRANSFER_QUEUE)
 #define NEEDED_QUEUES_COUNT 3
 
-bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
+bool create_setup_info(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
 
 	if (!create_logical_device(setup_info, static_info)) {
 		return false;
@@ -609,7 +609,7 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info) {
 	return true;
 }
 
-bool create_pipeline(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info) {
+bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info) {
 	shaderc_compilation_result_t vert_res;
 	VkShaderModule               vert_module = {};
 

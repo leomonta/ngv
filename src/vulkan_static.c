@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-bool create_static_info(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info) {
+bool create_static_info(const NGVRendererSettings *settings, VulkanStaticInfo *static_info) {
 	if (!create_instance(&static_info->vulkan_instance)) {
 		return false;
 	}
@@ -197,7 +197,7 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 	return res;
 }
 
-bool pick_physical_device(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info) {
+bool pick_physical_device(const NGVRendererSettings *settings, VulkanStaticInfo *static_info) {
 
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(static_info->vulkan_instance, &count, nullptr);

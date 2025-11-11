@@ -10,7 +10,7 @@
  *
  * @return if the operation was successfull or not
  */
-bool create_static_info(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info);
+bool create_static_info(const NGVRendererSettings *settings, VulkanStaticInfo *static_info);
 
 /**
  * Destroy all of the data associated with the given `VulkanStaticInfo` and free their resouces
@@ -88,4 +88,4 @@ bool destroy_surface(VulkanStaticInfo *surface);
  *
  * @return `true` if successfull, `false` if no suitable device (or at all) was found
  */
-bool pick_physical_device(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info);
+bool pick_physical_device(const NGVRendererSettings *settings, VulkanStaticInfo *static_info);

@@ -15,7 +15,7 @@
 // SwapchainInfo    swapchain;
 //} VulkanSetupInfo;
 
-bool create_setup_info(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
+bool create_setup_info(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info);
 
 bool destroy_setup_info(VulkanSetupInfo *setup_info);
 
@@ -120,7 +120,7 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info);
  *
  * @return if the operation was successfull or not
  */
-bool create_pipeline(const VulkanSetupSettings *settings, VulkanSetupInfo *setup_info);
+bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info);
 
 /**
  * Destroy the pipeline and all of its related objects

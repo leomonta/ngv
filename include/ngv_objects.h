@@ -138,23 +138,15 @@ typedef struct {
 // Configuration structs
 // ------------------------------------------------------------------------------------------------
 
-typedef struct {
-	bool     use_preferred_device;
-	uint32_t preferred_physical_device_id;
-} VulkanStaticSettings;
-
-typedef struct {
-} VulkanSetupSettings;
-
 typedef enum {
 	TWO_DIM,
 	THREE_DIM,
 } RendereDimensions;
 
 typedef struct {
-	VulkanStaticSettings static_settings;
-	VulkanSetupSettings  setup_settings;
-} RendererSettings;
+	bool     use_preferred_device;
+	uint32_t preferred_physical_device_id;
+} NGVRendererSettings;
 
 // ------------------------------------------------------------------------------------------------
 // Static data, set at startup and done, referenced rarely

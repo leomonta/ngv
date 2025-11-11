@@ -23,7 +23,7 @@ typedef struct {
 } VulkanFrameData;
 */
 
-bool create_frame_data(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
+bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Creates the texture images

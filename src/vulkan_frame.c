@@ -30,7 +30,7 @@ typedef struct {
 } VulkanFrameData;
 */
 
-bool create_frame_data(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
+bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 	if (!create_texture_image(setup_info, frame_data)) {
 		return false;
 	}
