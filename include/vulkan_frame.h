@@ -23,7 +23,7 @@ typedef struct {
 } VulkanFrameData;
 */
 
-bool create_frame_info(VulkanSetupInfo *setup_info, VulkanFrameData *frame_data);
+bool create_frame_data(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Creates the texture images
@@ -67,23 +67,6 @@ bool create_texture_sampler(VulkanFrameData *frame_data, uint32_t index);
 bool destroy_texture_sampler(VulkanFrameData *frame_data, uint32_t index);
 
 /**
- * Create the framebuffers
- *
- * @param[in] `frame_data` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool create_framebuffers(VulkanFrameData *frame_data);
-
-/**
- * Destroys the framebuffer
- *
- * @param[in] `frame_data` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool destroy_framebuffers(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
-/**
  * Create the samaphores needed for GPU <-> CPU Synchronization
  *
  * @param[in] `frame_data` the vulkan context to use
@@ -109,7 +92,7 @@ bool destroy_sync_objects(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_vertex_buffer(VulkanFrameData *frame_data);
+bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Destroys the vertex buffer
@@ -127,7 +110,7 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_index_buffer(VulkanFrameData *frame_data);
+bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Destroys the index buffer
@@ -145,7 +128,7 @@ bool destroy_index_buffer(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_uniform_buffer(VulkanFrameData *frame_data);
+bool create_uniform_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Destroys the uniform buffer
@@ -163,7 +146,7 @@ bool destroy_uniform_buffer(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_descriptor_set(VulkanFrameData *frame_data);
+bool create_descriptor_set(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
 
 /**
  * Destroys the descriptor set

@@ -21,36 +21,36 @@ uint32_t find_memory_type(const uint32_t type_filter, VkMemoryPropertyFlags prop
 	return (uint32_t)(-1);
 }
 
-bool copy_buffer(VulkanRuntimeInfo *vri, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+bool copy_buffer(VulkanSetupInfo *setup_info, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
 
 	VkCommandBufferBeginInfo beg_info = {};
 	beg_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beg_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	vkBeginCommandBuffer(vri->transfer_cmd_buff, &beg_info);
+	vkBeginCommandBuffer(setup_info->transfer_cmd_buff, &beg_info);
 	{
 		VkBufferCopy copyRegion = {};
 		copyRegion.srcOffset    = 0;
 		copyRegion.dstOffset    = 0;
 		copyRegion.size         = size;
-		vkCmdCopyBuffer(vri->transfer_cmd_buff, src, dst, 1, &copyRegion);
+		vkCmdCopyBuffer(setup_info->transfer_cmd_buff, src, dst, 1, &copyRegion);
 	}
-	vkEndCommandBuffer(vri->transfer_cmd_buff);
+	vkEndCommandBuffer(setup_info->transfer_cmd_buff);
 
 	VkSubmitInfo submitInfo       = {};
 	submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers    = &vri->transfer_cmd_buff;
+	submitInfo.pCommandBuffers    = &setup_info->transfer_cmd_buff;
 
-	vkQueueSubmit(vri->device_queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vri->device_queues.transfer);
+	vkQueueSubmit(setup_info->device_queues.transfer, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(setup_info->device_queues.transfer);
 
-	vkResetCommandBuffer(vri->transfer_cmd_buff, 0);
+	vkResetCommandBuffer(setup_info->transfer_cmd_buff, 0);
 
 	return true;
 }
 
-bool update_uniform_buffer(VulkanRuntimeInfo *vri, uint32_t frame_index) {
+bool update_uniform_buffer(VulkanSetupInfo *setup_info, FrameData *frame_data, uint32_t frame_index) {
 
 	MVP mvp = {
 	    GLM_MAT4_IDENTITY_INIT,
@@ -63,11 +63,11 @@ bool update_uniform_buffer(VulkanRuntimeInfo *vri, uint32_t frame_index) {
 
 	glm_lookat((float[]){2.0f, 2.0f, 2.0f}, (float[]){0.0f, 0.0f, 0.0f}, (float[]){0.0f, 0.0f, 1.0f}, mvp.view);
 
-	glm_perspective(glm_rad(100.f), (float)vri->swapchain.extent.width / (float)vri->swapchain.extent.height, 0.1f, 4.0f, mvp.proj);
+	glm_perspective(glm_rad(100.f), (float)setup_info->swapchain.extent.width / (float)setup_info->swapchain.extent.height, 0.1f, 4.0f, mvp.proj);
 
 	mvp.proj[1][1] *= -1;
 
-	memcpy(vri->frame_data_objects.uniform_buff_mapped[frame_index], &mvp, sizeof(mvp));
+	memcpy(frame_data->uniform_buff_mapped[frame_index], &mvp, sizeof(mvp));
 
 	return true;
 }

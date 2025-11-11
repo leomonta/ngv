@@ -12,14 +12,14 @@
  *
  * @return if the operation was successfull
  */
-bool record_cmd_buff(VulkanRuntimeInfo *vri, uint32_t img_index);
+bool record_cmd_buff(VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index);
 
 /**
  * Sends command to the command buffer and to the other queues to issue a draw call
  *
  * @param[in] `vri` the vulkan context to user
  */
-void draw_frame(VulkanRuntimeInfo *vri);
+void draw_frame(VulkanStaticInfo *static_info, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data);
 
 /**
  * Sets the given `command_buffer` to a begun one from the pool specified by `kind`

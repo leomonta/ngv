@@ -108,6 +108,8 @@ const char *ShaderKind_str(const ShaderKind kind) {
 	case COMPUTE_SHADER:
 		return "COMPUTE_SHADER";
 	}
+
+	return "UNKNOWN SHADER KIND";
 }
 
 const char *VkResult_str(const VkResult res) {

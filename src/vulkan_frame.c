@@ -1,10 +1,13 @@
 #include "vulkan_frame.h"
 
 #include "logger.h"
+#include "shader.h"
 #include "vkinit_utils.h"
+#include "vulkan_memory.h"
 
 #include <stb/stb_image.h>
 #include <string.h>
+#include <errno.h>
 
 /*
 typedef struct {
@@ -27,7 +30,7 @@ typedef struct {
 } VulkanFrameData;
 */
 
-bool create_frame_info(VulkanSetupInfo *setup_info, VulkanFrameData *frame_data) {
+bool create_frame_data(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 	if (!create_texture_image(setup_info, frame_data)) {
 		return false;
 	}
@@ -37,16 +40,16 @@ bool create_frame_info(VulkanSetupInfo *setup_info, VulkanFrameData *frame_data)
 	if (!create_texture_sampler(frame_data, 0)) {
 		return false;
 	}
-	if (!create_vertex_buffer(frame_data)) {
+	if (!create_vertex_buffer(frame_data, setup_info)) {
 		return false;
 	}
-	if (!create_index_buffer(frame_data)) {
+	if (!create_index_buffer(frame_data, setup_info)) {
 		return false;
 	}
-	if (!create_uniform_buffer(frame_data)) {
+	if (!create_uniform_buffer(frame_data, setup_info)) {
 		return false;
 	}
-	if (!create_descriptor_set(frame_data)) {
+	if (!create_descriptor_set(frame_data, setup_info)) {
 		return false;
 	}
 	if (!create_sync_objects(frame_data, setup_info)) {
@@ -341,7 +344,7 @@ bool create_framebuffers(VulkanFrameData *frame_data, VulkanSetupInfo *setup_inf
 
 		VkFramebufferCreateInfo fb_create = {};
 		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fb_create.renderPass              = frame_data->renderpass;
+		fb_create.renderPass              = setup_info->renderpass;
 		fb_create.attachmentCount         = 2;
 		fb_create.pAttachments            = attachments;
 		fb_create.width                   = setup_info->swapchain.extent.width;
@@ -494,19 +497,19 @@ bool destroy_sync_objects(VulkanFrameData *frame_data) {
 	return true;
 }
 
-bool create_vertex_buffer(VulkanFrameData *frame_data) {
+bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 	VkDeviceSize   buf_size = sizeof(__temp__data);
 	VkBuffer       buf_staging;
 	VkDeviceMemory buf_staging_mem;
-	create_buffer(frame_data, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
+	create_buffer(setup_info, frame_data->physical_dev, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
 
 	void *data;
 	vkMapMemory(frame_data->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
 	memcpy(data, __temp__data, buf_size);
 	vkUnmapMemory(frame_data->logical_dev, buf_staging_mem);
 
-	create_buffer(frame_data, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->vertex_buff, &frame_data->vertex_buff_mem);
-	copy_buffer(frame_data, buf_staging, frame_data->vertex_buff, buf_size);
+	create_buffer(setup_info, frame_data->physical_dev, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->vertex_buff, &frame_data->vertex_buff_mem);
+	copy_buffer(setup_info, buf_staging, frame_data->vertex_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 
@@ -525,19 +528,19 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data) {
 	return true;
 }
 
-bool create_index_buffer(VulkanFrameData *frame_data) {
+bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 	VkDeviceSize   buf_size = sizeof(__temp__indicies);
 	VkBuffer       buf_staging;
 	VkDeviceMemory buf_staging_mem;
-	create_buffer(frame_data, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
+	create_buffer(setup_info, frame_data->physical_dev, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
 
 	void *data;
 	vkMapMemory(frame_data->logical_dev, buf_staging_mem, 0, buf_size, 0, &data);
 	memcpy(data, __temp__indicies, buf_size);
 	vkUnmapMemory(frame_data->logical_dev, buf_staging_mem);
 
-	create_buffer(frame_data, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->index_buff, &frame_data->index_buff_mem);
-	copy_buffer(frame_data, buf_staging, frame_data->index_buff, buf_size);
+	create_buffer(setup_info, frame_data->physical_dev, buf_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->index_buff, &frame_data->index_buff_mem);
+	copy_buffer(setup_info, buf_staging, frame_data->index_buff, buf_size);
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
 
@@ -556,11 +559,11 @@ bool destroy_index_buffer(VulkanFrameData *frame_data) {
 	return true;
 }
 
-bool create_uniform_buffer(VulkanFrameData *frame_data) {
+bool create_uniform_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 	VkDeviceSize sz = sizeof(MVP);
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
-		create_buffer(frame_data, sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &frame_data->frame_data_objects.uniform_buff[i], &frame_data->frame_data_objects.uniform_buff_mem[i]);
+		create_buffer(setup_info, frame_data->physical_dev, sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &frame_data->frame_data_objects.uniform_buff[i], &frame_data->frame_data_objects.uniform_buff_mem[i]);
 
 		vkMapMemory(frame_data->logical_dev, frame_data->frame_data_objects.uniform_buff_mem[i], 0, sz, 0, &frame_data->frame_data_objects.uniform_buff_mapped[i]);
 	}
@@ -569,7 +572,7 @@ bool create_uniform_buffer(VulkanFrameData *frame_data) {
 	return true;
 }
 
-bool destroy_uniform_buffer(VulkanSetupInfo *frame_data) {
+bool destroy_uniform_buffer(VulkanFrameData *frame_data) {
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
 		vkDestroyBuffer(frame_data->logical_dev, frame_data->frame_data_objects.uniform_buff[i], nullptr);

@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-bool create_static_info(VulkanStaticInfo *static_info, VulkanStaticSettings settings) {
+bool create_static_info(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info) {
 	if (!create_instance(&static_info->vulkan_instance)) {
 		return false;
 	}
@@ -197,7 +197,7 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 	return res;
 }
 
-bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo *static_info) {
+bool pick_physical_device(const VulkanStaticSettings *settings, VulkanStaticInfo *static_info) {
 
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(static_info->vulkan_instance, &count, nullptr);
@@ -210,10 +210,10 @@ bool pick_physical_device(const VulkanStaticSettings settings, VulkanStaticInfo 
 
 	VkPhysicalDevice chosen_dev;
 
-	if (settings.use_preferred_device) {
+	if (settings->use_preferred_device) {
 		chosen_dev = devs[0];
 	} else {
-		chosen_dev = get_chosen_device(devs, count, settings.preferred_physical_device_id); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
+		chosen_dev = get_chosen_device(devs, count, settings->preferred_physical_device_id); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];
 	}
 
 	if (chosen_dev == VK_NULL_HANDLE) {
