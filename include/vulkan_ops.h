@@ -12,14 +12,14 @@
  *
  * @return if the operation was successfull
  */
-bool record_cmd_buff(VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index);
+bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index);
 
 /**
  * Sends command to the command buffer and to the other queues to issue a draw call
  *
  * @param[in] `vri` the vulkan context to user
  */
-void draw_frame(VulkanStaticInfo *static_info, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data);
+void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_info, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data);
 
 /**
  * Sets the given `command_buffer` to a begun one from the pool specified by `kind`
@@ -30,7 +30,7 @@ void draw_frame(VulkanStaticInfo *static_info, VulkanSetupInfo *setup_info, Vulk
  *
  * @return if the operation was successful
  */
-bool begin_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCommandBuffer *command_buffer);
+bool begin_temporary_command_buffer(VulkanSetupInfo *setup_info, QueueKind kind, VkCommandBuffer *command_buffer);
 
 /**
  * Ends and submits the `command_buffer`, then waits for its completion
@@ -42,8 +42,8 @@ bool begin_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCo
  *
  * @return if the operation was successful
  */
-bool end_temporary_command_buffer(VulkanRuntimeInfo *vri, QueueKind kind, VkCommandBuffer command_buffer);
+bool end_temporary_command_buffer(VulkanSetupInfo *setup_info, QueueKind kind, VkCommandBuffer command_buffer);
 
-void transition_image_layout(VulkanRuntimeInfo *vri, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+void transition_image_layout(VulkanSetupInfo *setup_info, VkImage image, VkFormat format, VkImageLayout from_layout, VkImageLayout to_layout);
 
-void copy_buffer_to_image(VulkanRuntimeInfo *vri, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+void copy_buffer_to_image(VulkanSetupInfo *setup_info, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);

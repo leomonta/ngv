@@ -50,7 +50,7 @@ bool copy_buffer(VulkanSetupInfo *setup_info, VkBuffer src, VkBuffer dst, VkDevi
 	return true;
 }
 
-bool update_uniform_buffer(VulkanSetupInfo *setup_info, FrameData *frame_data, uint32_t frame_index) {
+bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data) {
 
 	MVP mvp = {
 	    GLM_MAT4_IDENTITY_INIT,
@@ -67,7 +67,7 @@ bool update_uniform_buffer(VulkanSetupInfo *setup_info, FrameData *frame_data, u
 
 	mvp.proj[1][1] *= -1;
 
-	memcpy(frame_data->uniform_buff_mapped[frame_index], &mvp, sizeof(mvp));
+	memcpy(raw_data, &mvp, sizeof(mvp));
 
 	return true;
 }

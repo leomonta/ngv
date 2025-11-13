@@ -53,7 +53,7 @@ const char **get_required_extensions(uint32_t *count);
  *
  * @return if the operation was successfull
  */
-bool init_window(GLFWwindow **window);
+bool init_window(const NGVRendererSettings *settings, GLFWwindow **window);
 
 /**
  * Terminate the window and `glfw`

@@ -69,18 +69,6 @@ typedef struct {
 	VkDescriptorSetLayout descriptor_set_layout;
 } ShaderPipeline;
 
-// small hack since the value is defined at compile time
-typedef struct {
-	VkCommandBuffer cmd_buff[MAX_CONCURRENT_FRAMES];
-	VkSemaphore     image_available[MAX_CONCURRENT_FRAMES];
-	VkSemaphore     render_finished[MAX_CONCURRENT_FRAMES];
-	VkFence         in_flight_fence[MAX_CONCURRENT_FRAMES];
-	VkDescriptorSet descriptor_sets[MAX_CONCURRENT_FRAMES];
-	VkBuffer        uniform_buff[MAX_CONCURRENT_FRAMES];
-	VkDeviceMemory  uniform_buff_mem[MAX_CONCURRENT_FRAMES];
-	void           *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
-} FrameData;
-
 typedef struct {
 	size_t         count;
 	VkImage        objects[TEMP_ARRAY_SIZE];
@@ -109,43 +97,23 @@ typedef struct {
 	VkImageView    view;
 } DepthBufferObjects;
 
-typedef struct {
-	GLFWwindow              *sys_window;
-	VkInstance               instance;
-	VkDebugUtilsMessengerEXT debug_logger;
-	VkSurfaceKHR             surface;
-	VkPhysicalDevice         physical_dev;
-	VkDevice                 logical_dev;
-	VkRenderPass             renderpass;
-	VkCommandPool            graphics_cmd_pool;
-	VkCommandPool            transfer_cmd_pool;
-	VkDescriptorPool         descriptor_pool;
-	VkCommandBuffer          transfer_cmd_buff;
-	VkBuffer                 index_buff;
-	VkDeviceMemory           index_buff_mem;
-	VkBuffer                 vertex_buff;
-	VkDeviceMemory           vertex_buff_mem;
-	DepthBufferObjects       depth_objects;
-	FrameData                frame_data_objects;
-	TextureData              textures;
-	CreatedQueues            device_queues;
-	QueuesIndicies           device_queues_indices;
-	SwapchainInfo            swapchain;
-	ShaderPipeline           pipeline;
-} VulkanRuntimeInfo;
-
 // ------------------------------------------------------------------------------------------------
 // Configuration structs
 // ------------------------------------------------------------------------------------------------
 
-typedef enum {
+typedef enum : char {
 	TWO_DIM,
 	THREE_DIM,
-} RendereDimensions;
+} RendererDimensions;
 
 typedef struct {
-	bool     use_preferred_device;
-	uint32_t preferred_physical_device_id;
+	bool               use_preferred_device;
+	RendererDimensions dimensions;
+	bool               accumulation_buffer;
+	uint32_t           preferred_physical_device_id;
+	int                window_width;
+	int                window_height;
+	char              *window_name;
 } NGVRendererSettings;
 
 // ------------------------------------------------------------------------------------------------
@@ -184,6 +152,7 @@ typedef struct {
 typedef struct {
 	VkPhysicalDevice physical_dev; // the same present in static info, just a shortcut
 	VkDevice         logical_dev;  // the same present in setup info, just a shortcut
+	uint32_t         index_count;
 	VkBuffer         index_buff;
 	VkDeviceMemory   index_buff_mem;
 	VkBuffer         vertex_buff;
@@ -196,6 +165,5 @@ typedef struct {
 	VkBuffer         uniform_buff[MAX_CONCURRENT_FRAMES];
 	VkDeviceMemory   uniform_buff_mem[MAX_CONCURRENT_FRAMES];
 	void            *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
-	FrameData        frame_data_objects;
 	TextureData      textures;
 } VulkanFrameData;

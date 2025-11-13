@@ -18,12 +18,13 @@ typedef struct {
     VkBuffer         uniform_buff[MAX_CONCURRENT_FRAMES];
     VkDeviceMemory   uniform_buff_mem[MAX_CONCURRENT_FRAMES];
     void            *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
-    FrameData        frame_data_objects;
     TextureData      textures;
 } VulkanFrameData;
 */
 
 bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
+
+bool destroy_frame_data(VulkanFrameData *frame_data);
 
 /**
  * Creates the texture images
@@ -92,7 +93,7 @@ bool destroy_sync_objects(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
+bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void* vertex_data, VkDeviceSize size);
 
 /**
  * Destroys the vertex buffer
@@ -110,7 +111,7 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
+bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void* index_data, VkDeviceSize size);
 
 /**
  * Destroys the index buffer

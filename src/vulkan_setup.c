@@ -338,11 +338,13 @@ bool create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info
 	auto mode                    = pick_swapchain_mode(scd.modes, scd.modes_count);
 	setup_info->swapchain.extent = pick_swapchain_extent(&scd.capabilities, static_info->system_window);
 
-	uint32_t image_count = scd.capabilities.minImageCount + 1;
+	uint32_t image_count = 3;
 
 	// maxImageCount == 0 means that there isn't a hard maximum
 	if (scd.capabilities.maxImageCount > 0) {
 		image_count = clamp(image_count, scd.capabilities.minImageCount, scd.capabilities.maxImageCount);
+	} else {
+		image_count = clamp(image_count, scd.capabilities.minImageCount, image_count);
 	}
 
 	VkSwapchainCreateInfoKHR sc_create = {
@@ -378,28 +380,25 @@ bool create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info
 		sc_create.pQueueFamilyIndices   = nullptr; // Optional
 	}
 
-	VkSwapchainKHR sc;
-
-	auto res = vkCreateSwapchainKHR(setup_info->logical_dev, &sc_create, nullptr, &sc);
+	auto res = vkCreateSwapchainKHR(setup_info->logical_dev, &sc_create, nullptr, &setup_info->swapchain.swapchain);
 
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[SWAPCHAIN] Could not create the Swapchain: %s\n", VkResult_str(res));
 		return false;
 	}
 
-	setup_info->swapchain.swapchain = sc;
 	setup_info->swapchain.format    = format.format;
 
 	free(scd.formats);
 	free(scd.modes);
 
 	// retrieving images
-	vkGetSwapchainImagesKHR(setup_info->logical_dev, sc, &setup_info->swapchain.buffers_count, nullptr);
+	vkGetSwapchainImagesKHR(setup_info->logical_dev, setup_info->swapchain.swapchain, &setup_info->swapchain.buffers_count, nullptr);
 	// count > 0 cuz the creation of the swapchain was successfull
 	// I can exploit the fact the when i recreate the swapchain `cleanup_swapchain` does not free the pointer, just need to ensure that the defualt value is nullptr
 	setup_info->swapchain.buffers = realloc(setup_info->swapchain.buffers, sizeof(VkImage) * setup_info->swapchain.buffers_count);
 	TEST_MALLOC(setup_info->swapchain.buffers);
-	vkGetSwapchainImagesKHR(setup_info->logical_dev, sc, &setup_info->swapchain.buffers_count, setup_info->swapchain.buffers);
+	vkGetSwapchainImagesKHR(setup_info->logical_dev, setup_info->swapchain.swapchain, &setup_info->swapchain.buffers_count, setup_info->swapchain.buffers);
 
 	llog(LOG_DEBUG, "[SWAPCHAIN] Swapchain successfully created\n");
 

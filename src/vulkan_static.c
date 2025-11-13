@@ -15,7 +15,7 @@ bool create_static_info(const NGVRendererSettings *settings, VulkanStaticInfo *s
 	if (!create_surface(static_info)) {
 		return false;
 	}
-	if (!init_window(&static_info->system_window)) {
+	if (!init_window(settings, &static_info->system_window)) {
 		return false;
 	}
 	if (!pick_physical_device(settings, static_info)) {
@@ -66,8 +66,6 @@ bool create_instance(VkInstance *instance) {
 #ifdef USE_VALIDATION_LAYERS
 	instance_create_info.enabledLayerCount   = VALIDATION_LAYERS_COUNT;
 	instance_create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
-#else
-	createInfo.enabledLayerCount = 0;
 #endif
 
 	auto exts = get_required_extensions(&instance_create_info.enabledExtensionCount);
@@ -123,7 +121,7 @@ const char **get_required_extensions(uint32_t *count) {
 	return exts;
 }
 
-bool init_window(GLFWwindow **window) {
+bool init_window(const NGVRendererSettings *settings, GLFWwindow **window) {
 
 	// renderdoc does not supper wayland
 #ifdef DO_RENDERDOC
@@ -138,16 +136,27 @@ bool init_window(GLFWwindow **window) {
 	// TODO: Handle Resizing
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
+	// Selecting the window sizing
+	// if selected in the settings (>= 0) use those
+	// else use the monitor size
+	// if those are not available
+	// use hardcoded values
+
+	int def_wt = DEFAULT_WINDOW_WIDTH;
+	int def_ht = DEFAULT_WINDOW_HEIGHT;
+
 	// get the monitor size
 	// if unavailable standard 1920x1080
 	auto const mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-	int        wt = DEFAULT_WINDOW_WIDTH, ht = DEFAULT_WINDOW_HEIGHT;
 	if (mode != NULL) {
-		ht = mode->height;
-		wt = mode->width;
+		def_ht = mode->height;
+		def_wt = mode->width;
 	}
 
-	*window = glfwCreateWindow(wt, ht, "ngv", nullptr, nullptr);
+	int wt = settings->window_width >= 0 ? settings->window_width : def_wt;
+	int ht = settings->window_height >= 0 ? settings->window_height : def_ht;
+
+	*window = glfwCreateWindow(wt, ht, settings->window_name, nullptr, nullptr);
 
 	return true;
 }

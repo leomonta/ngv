@@ -18,9 +18,9 @@ uint32_t find_memory_type(const uint32_t type_filter, VkMemoryPropertyFlags prop
 bool copy_buffer(VulkanSetupInfo *setup_info, VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
 /**
- * @param[in] `vri` the vulkan context to use
- * @param[in] `frame_index` which uniform buffer to update
- * 
+ * @param[in] `setup_info` the vulkan context to use
+ * @param[in] `raw_data` 
+ *
  * @return if the operation was successful
  */
-bool update_uniform_buffer(VulkanSetupInfo *setup_info, FrameData *frame_data, uint32_t frame_index);
+bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data);
