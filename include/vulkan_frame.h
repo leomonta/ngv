@@ -93,7 +93,25 @@ bool destroy_sync_objects(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void* vertex_data, VkDeviceSize size);
+bool create_staging_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
+
+/**
+ * Destroys the vertex buffer
+ *
+ * @param[in] `frame_data` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_staging_buffer(VulkanFrameData *frame_data);
+
+/**
+ * Create the vertex buffer and sets it up with the default vertex layout
+ *
+ * @param[in] `frame_data` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *vertex_data, VkDeviceSize size);
 
 /**
  * Destroys the vertex buffer
@@ -111,7 +129,7 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data);
  *
  * @return if the operation was successfull or not
  */
-bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void* index_data, VkDeviceSize size);
+bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *index_data, VkDeviceSize size);
 
 /**
  * Destroys the index buffer

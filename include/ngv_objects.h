@@ -106,6 +106,17 @@ typedef enum : char {
 	THREE_DIM,
 } RendererDimensions;
 
+typedef enum : char {
+	TOPOLOGY_TRIANGLE,
+	TOPOLOGY_POINT,
+} Topology;
+
+typedef enum : char {
+	GEOMETRY_FILL,
+	GEOMETRY_WIREFRAME,
+	GEOMETRY_POINT,
+} GeometryDraw;
+
 typedef struct {
 	bool               use_preferred_device;
 	RendererDimensions dimensions;
@@ -114,6 +125,8 @@ typedef struct {
 	int                window_width;
 	int                window_height;
 	char              *window_name;
+	Topology           topology;
+	GeometryDraw       geometry_drawn;
 } NGVRendererSettings;
 
 // ------------------------------------------------------------------------------------------------
@@ -157,6 +170,8 @@ typedef struct {
 	VkDeviceMemory   index_buff_mem;
 	VkBuffer         vertex_buff;
 	VkDeviceMemory   vertex_buff_mem;
+	VkBuffer         staging_buff;
+	VkDeviceMemory   staging_buff_mem;
 	VkCommandBuffer  cmd_buff[MAX_CONCURRENT_FRAMES];
 	VkSemaphore      image_available[MAX_CONCURRENT_FRAMES];
 	VkSemaphore      render_finished[MAX_CONCURRENT_FRAMES];

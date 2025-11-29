@@ -608,6 +608,32 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info) {
 	return true;
 }
 
+VkPolygonMode ngv_to_vk_geometry_drawn(GeometryDraw gd) {
+	switch (gd) {
+		case GEOMETRY_FILL:
+			return VK_POLYGON_MODE_FILL;
+		case GEOMETRY_WIREFRAME:
+			return VK_POLYGON_MODE_LINE;
+		case GEOMETRY_POINT:
+			return VK_POLYGON_MODE_POINT;
+	}
+
+}
+
+VkPrimitiveTopology ngv_to_vk_topology(Topology tp) {
+	switch (tp) {
+		case TOPOLOGY_TRIANGLE:
+			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			break;
+
+		case TOPOLOGY_POINT:
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+			break;
+	
+	}
+
+}
+
 bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info) {
 	shaderc_compilation_result_t vert_res;
 	VkShaderModule               vert_module = {};
@@ -661,10 +687,9 @@ bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 	    .pNext                           = nullptr,
 	};
 
-	// TODO: make this changeable for the user
 	VkPipelineInputAssemblyStateCreateInfo ia_create = {
 	    .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-	    .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	    .topology               = ngv_to_vk_topology(settings->topology),
 	    .primitiveRestartEnable = VK_FALSE,
 	    .flags                  = 0,
 	    .pNext                  = nullptr,
@@ -684,7 +709,7 @@ bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 	    .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 	    .depthClampEnable        = VK_FALSE,
 	    .rasterizerDiscardEnable = VK_FALSE,
-	    .polygonMode             = VK_POLYGON_MODE_FILL, // TODO: settable wireframe here
+	    .polygonMode             = ngv_to_vk_geometry_drawn(settings->geometry_drawn),
 	    .lineWidth               = 1.0f,
 	    .cullMode                = VK_CULL_MODE_NONE,
 	    // rt_create.frontFace                              = VK_FRONT_FACE_CLOCKWISE;

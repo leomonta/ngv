@@ -19,8 +19,10 @@ bool copy_buffer(VulkanSetupInfo *setup_info, VkBuffer src, VkBuffer dst, VkDevi
 
 /**
  * @param[in] `setup_info` the vulkan context to use
- * @param[in] `raw_data` 
+ * @param[in] `raw_data`
  *
  * @return if the operation was successful
  */
 bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data);
+
+bool push_to_buffer(const VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, const VkBuffer *buff, const void *pushed_data, const VkDeviceSize size);

@@ -25,12 +25,12 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 		if (settings->accumulation_buffer) {
 			// no alpha
 			clear_colors[0].color = (VkClearColorValue){
-			    .float32 = {0.0f, 0.0f, 0.0f, 0.0f}
-            };
+			    .float32 = {0.0f, 0.0f, 0.0f, 0.0f},
+			};
 		} else {
 			clear_colors[0].color = (VkClearColorValue){
-			    .float32 = {0.0f, 0.0f, 0.0f, 1.0f}
-            };
+			    .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
+			};
 		}
 		clear_colors[1].depthStencil = (VkClearDepthStencilValue){1.0f, 0};
 

@@ -40,6 +40,9 @@ bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *fra
 	if (!create_texture_sampler(frame_data, 0)) {
 		return false;
 	}
+	if (!create_staging_buffer(frame_data, setup_info, nullptr, 0)) {
+		return false;
+	}
 	if (!create_vertex_buffer(frame_data, setup_info, nullptr, 0)) {
 		return false;
 	}
@@ -69,6 +72,9 @@ bool destroy_frame_data(VulkanFrameData *frame_data) {
 		return false;
 	}
 	if (!destroy_vertex_buffer(frame_data)) {
+		return false;
+	}
+	if (!destroy_staging_buffer(frame_data)) {
 		return false;
 	}
 	if (!destroy_index_buffer(frame_data)) {
@@ -370,23 +376,36 @@ bool destroy_sync_objects(VulkanFrameData *frame_data) {
 	return true;
 }
 
-bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *vertex_data, VkDeviceSize size) {
-	VkBuffer       buf_staging;
-	VkDeviceMemory buf_staging_mem;
-	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
+bool create_staging_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
+	create_buffer(setup_info, frame_data->physical_dev, STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &frame_data->staging_buff, &frame_data->staging_buff_mem);
 
+	llog(LOG_DEBUG, "[VMEM] Internal staging buffer objects successfully created and allocated\n");
+
+	return true;
+}
+
+bool destroy_staging_buffer(VulkanFrameData *frame_data) {
+	vkFreeMemory(frame_data->logical_dev, frame_data->vertex_buff_mem, nullptr);
+	vkDestroyBuffer(frame_data->logical_dev, frame_data->vertex_buff, nullptr);
+
+	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully destroyed and freed\n");
+
+	return true;
+}
+
+bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *vertex_data, VkDeviceSize size) {
 	void *data;
-	vkMapMemory(frame_data->logical_dev, buf_staging_mem, 0, size, 0, &data);
+	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
 	memcpy(data, vertex_data, size);
-	vkUnmapMemory(frame_data->logical_dev, buf_staging_mem);
+	vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
 
 	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->vertex_buff, &frame_data->vertex_buff_mem);
-	copy_buffer(setup_info, buf_staging, frame_data->vertex_buff, size);
+	copy_buffer(setup_info, frame_data->staging_buff, frame_data->vertex_buff, size);
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 
-	vkDestroyBuffer(frame_data->logical_dev, buf_staging, nullptr);
-	vkFreeMemory(frame_data->logical_dev, buf_staging_mem, nullptr);
+	vkDestroyBuffer(frame_data->logical_dev, frame_data->staging_buff, nullptr);
+	vkFreeMemory(frame_data->logical_dev, frame_data->staging_buff_mem, nullptr);
 
 	return true;
 }
@@ -401,17 +420,13 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data) {
 }
 
 bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *index_data, VkDeviceSize size) {
-	VkBuffer       buf_staging;
-	VkDeviceMemory buf_staging_mem;
-	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &buf_staging, &buf_staging_mem);
-
 	void *data;
-	vkMapMemory(frame_data->logical_dev, buf_staging_mem, 0, size, 0, &data);
+	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
 	memcpy(data, index_data, size);
-	vkUnmapMemory(frame_data->logical_dev, buf_staging_mem);
+	vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
 
 	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->index_buff, &frame_data->index_buff_mem);
-	copy_buffer(setup_info, buf_staging, frame_data->index_buff, size);
+	copy_buffer(setup_info, frame_data->staging_buff, frame_data->index_buff, size);
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
 

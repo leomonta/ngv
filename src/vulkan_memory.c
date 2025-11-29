@@ -2,6 +2,7 @@
 
 #include "cglm_proxy.h"
 #include "logger.h"
+#include "vkinit_utils.h"
 #include "vulkan/vulkan_core.h"
 
 #include <string.h>
@@ -70,4 +71,16 @@ bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data) {
 	memcpy(raw_data, &mvp, sizeof(mvp));
 
 	return true;
+}
+
+bool push_to_buffer(const VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, const VkBuffer *buff, const void *pushed_data, const VkDeviceSize size) {
+
+	void *data;
+	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
+	memcpy(data, pushed_data, size);
+	vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
+
+	copy_buffer(setup_info, frame_data->staging_buff, buff, size);
+
+	return false;
 }
