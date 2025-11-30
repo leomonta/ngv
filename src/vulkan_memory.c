@@ -73,7 +73,7 @@ bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data) {
 	return true;
 }
 
-bool push_to_buffer(const VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, const VkBuffer *buff, const void *pushed_data, const VkDeviceSize size) {
+bool push_to_buffer(VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, VkBuffer buff, const void *pushed_data, const VkDeviceSize size) {
 
 	void *data;
 	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
@@ -82,5 +82,5 @@ bool push_to_buffer(const VulkanSetupInfo *setup_info, const VulkanFrameData *fr
 
 	copy_buffer(setup_info, frame_data->staging_buff, buff, size);
 
-	return false;
+	return true;
 }

@@ -25,4 +25,4 @@ bool copy_buffer(VulkanSetupInfo *setup_info, VkBuffer src, VkBuffer dst, VkDevi
  */
 bool update_uniform_buffer(VulkanSetupInfo *setup_info, void *raw_data);
 
-bool push_to_buffer(const VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, const VkBuffer *buff, const void *pushed_data, const VkDeviceSize size);
+bool push_to_buffer(VulkanSetupInfo *setup_info, const VulkanFrameData *frame_data, VkBuffer buff, const void *pushed_data, const VkDeviceSize size);

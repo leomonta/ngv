@@ -186,15 +186,17 @@ bool create_logical_device(VulkanSetupInfo *setup_info, VulkanStaticInfo *static
 	}
 
 	float q_priority = 1.0f;
-	for (uint32_t i = 0; i < num_unique_queues; ++i) {
+	for (uint32_t i = 0; i < num_unique_queues; i++) {
+
+		assert(i < NEEDED_QUEUES_COUNT);
 
 		q_create[i] = (VkDeviceQueueCreateInfo){
 		    .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-		    .flags            = 0,
 		    .queueFamilyIndex = needed_queues[i],
 		    .queueCount       = 1,
 		    .pQueuePriorities = &q_priority,
 		    .pNext            = nullptr,
+		    .flags            = 0,
 		};
 	}
 
@@ -608,7 +610,7 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info) {
 	return true;
 }
 
-VkPolygonMode ngv_to_vk_geometry_drawn(GeometryDraw gd) {
+VkPolygonMode ngv_to_vk_geometry_drawn(const GeometryDraw gd) {
 	switch (gd) {
 		case GEOMETRY_FILL:
 			return VK_POLYGON_MODE_FILL;
@@ -620,25 +622,22 @@ VkPolygonMode ngv_to_vk_geometry_drawn(GeometryDraw gd) {
 
 }
 
-VkPrimitiveTopology ngv_to_vk_topology(Topology tp) {
+VkPrimitiveTopology ngv_to_vk_topology(const Topology tp) {
 	switch (tp) {
 		case TOPOLOGY_TRIANGLE:
 			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			break;
-
 		case TOPOLOGY_POINT:
 			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 			break;
-	
 	}
-
 }
 
 bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info) {
 	shaderc_compilation_result_t vert_res;
 	VkShaderModule               vert_module = {};
 
-	create_shader_module("../shaders/main.vert", VERTEX_SHADER, setup_info->logical_dev, &vert_module, &vert_res);
+	create_shader_module(FALLBACK_PTR(settings->vertex_shader_name, "../shaders/main.vert"), VERTEX_SHADER, setup_info->logical_dev, &vert_module, &vert_res);
 
 	shaderc_compilation_result_t frag_res;
 	VkShaderModule               frag_module = {};

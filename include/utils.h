@@ -23,6 +23,8 @@ typedef uint64_t longBitfield;
 		return ret;                                                      \
 	}
 
+#define FALLBACK_PTR(main, fallback) (main != nullptr && main != NULL ? main : fallback)
+
 /**
  * a realloc re-implemetation to behave like I want
  * if ptr == NULL || ptr == nullptr return malloc(size)

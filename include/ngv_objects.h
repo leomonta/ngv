@@ -125,6 +125,8 @@ typedef struct {
 	int                window_width;
 	int                window_height;
 	char              *window_name;
+	char              *vertex_shader_name;
+	char              *fragment_shader_name;
 	Topology           topology;
 	GeometryDraw       geometry_drawn;
 } NGVRendererSettings;

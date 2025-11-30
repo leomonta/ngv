@@ -1,7 +1,6 @@
 #include "vulkan_frame.h"
 
 #include "logger.h"
-#include "shader.h"
 #include "vkinit_utils.h"
 #include "vulkan_memory.h"
 #include "vulkan_ops.h"
@@ -40,13 +39,13 @@ bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *fra
 	if (!create_texture_sampler(frame_data, 0)) {
 		return false;
 	}
-	if (!create_staging_buffer(frame_data, setup_info, nullptr, 0)) {
+	if (!create_staging_buffer(frame_data, setup_info)) {
 		return false;
 	}
-	if (!create_vertex_buffer(frame_data, setup_info, nullptr, 0)) {
+	if (!create_vertex_buffer(frame_data, setup_info, nullptr, 8196)) {
 		return false;
 	}
-	if (!create_index_buffer(frame_data, setup_info, nullptr, 0)) {
+	if (!create_index_buffer(frame_data, setup_info, nullptr, 8192)) {
 		return false;
 	}
 	if (!create_uniform_buffer(frame_data, setup_info)) {
@@ -339,21 +338,21 @@ bool create_sync_objects(VulkanFrameData *frame_data, VulkanSetupInfo *setup_inf
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
 
-		auto res = vkCreateSemaphore(frame_data->logical_dev, &sem_create, nullptr, &frame_data->image_available[i]);
-		if (res != VK_SUCCESS) {
-			llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(res));
+		auto rr = vkCreateSemaphore(frame_data->logical_dev, &sem_create, nullptr, &frame_data->image_available[i]);
+		if (rr != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the Image available semaphore: %s\n", VkResult_str(rr));
 			return false;
 		}
 
-		res = vkCreateSemaphore(frame_data->logical_dev, &sem_create, nullptr, &frame_data->render_finished[i]);
-		if (res != VK_SUCCESS) {
-			llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(res));
+		rr = vkCreateSemaphore(frame_data->logical_dev, &sem_create, nullptr, &frame_data->render_finished[i]);
+		if (rr != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the render finished semaphore: %s\n", VkResult_str(rr));
 			return false;
 		}
 
-		res = vkCreateFence(frame_data->logical_dev, &fnc_create, nullptr, &frame_data->in_flight_fence[i]);
-		if (res != VK_SUCCESS) {
-			llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(res));
+		rr = vkCreateFence(frame_data->logical_dev, &fnc_create, nullptr, &frame_data->in_flight_fence[i]);
+		if (rr != VK_SUCCESS) {
+			llog(LOG_FATAL, "[SYNCHRO] Could not create the render in in flight fence fence: %s\n", VkResult_str(rr));
 			return false;
 		}
 	}
@@ -377,37 +376,36 @@ bool destroy_sync_objects(VulkanFrameData *frame_data) {
 }
 
 bool create_staging_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
-	create_buffer(setup_info, frame_data->physical_dev, STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &frame_data->staging_buff, &frame_data->staging_buff_mem);
+	auto res = create_buffer(setup_info, frame_data->physical_dev, STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &frame_data->staging_buff, &frame_data->staging_buff_mem);
 
 	llog(LOG_DEBUG, "[VMEM] Internal staging buffer objects successfully created and allocated\n");
 
-	return true;
+	return res;
 }
 
 bool destroy_staging_buffer(VulkanFrameData *frame_data) {
 	vkFreeMemory(frame_data->logical_dev, frame_data->vertex_buff_mem, nullptr);
 	vkDestroyBuffer(frame_data->logical_dev, frame_data->vertex_buff, nullptr);
 
-	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully destroyed and freed\n");
+	llog(LOG_DEBUG, "[VMEM] Staging buffer objects successfully destroyed and freed\n");
 
 	return true;
 }
 
 bool create_vertex_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *vertex_data, VkDeviceSize size) {
-	void *data;
-	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
-	memcpy(data, vertex_data, size);
-	vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
+	auto res = create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->vertex_buff, &frame_data->vertex_buff_mem);
 
-	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->vertex_buff, &frame_data->vertex_buff_mem);
-	copy_buffer(setup_info, frame_data->staging_buff, frame_data->vertex_buff, size);
+	if (vertex_data != nullptr) {
+		void *data;
+		vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
+		memcpy(data, vertex_data, size);
+		vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
+		copy_buffer(setup_info, frame_data->staging_buff, frame_data->vertex_buff, size);
+	}
 
 	llog(LOG_DEBUG, "[VMEM] Vertex buffer objects successfully created and allocated\n");
 
-	vkDestroyBuffer(frame_data->logical_dev, frame_data->staging_buff, nullptr);
-	vkFreeMemory(frame_data->logical_dev, frame_data->staging_buff_mem, nullptr);
-
-	return true;
+	return res;
 }
 
 bool destroy_vertex_buffer(VulkanFrameData *frame_data) {
@@ -420,20 +418,19 @@ bool destroy_vertex_buffer(VulkanFrameData *frame_data) {
 }
 
 bool create_index_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info, void *index_data, VkDeviceSize size) {
-	void *data;
-	vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
-	memcpy(data, index_data, size);
-	vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
+	auto res = create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->index_buff, &frame_data->index_buff_mem);
 
-	create_buffer(setup_info, frame_data->physical_dev, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &frame_data->index_buff, &frame_data->index_buff_mem);
-	copy_buffer(setup_info, frame_data->staging_buff, frame_data->index_buff, size);
+	if (index_data != nullptr) {
+		void *data;
+		vkMapMemory(frame_data->logical_dev, frame_data->staging_buff_mem, 0, size, 0, &data);
+		memcpy(data, index_data, size);
+		vkUnmapMemory(frame_data->logical_dev, frame_data->staging_buff_mem);
+		copy_buffer(setup_info, frame_data->staging_buff, frame_data->index_buff, size);
+	}
 
 	llog(LOG_DEBUG, "[VMEM] Index buffer objects successfully created and allocated\n");
 
-	vkDestroyBuffer(frame_data->logical_dev, buf_staging, nullptr);
-	vkFreeMemory(frame_data->logical_dev, buf_staging_mem, nullptr);
-
-	return true;
+	return res;
 }
 
 bool destroy_index_buffer(VulkanFrameData *frame_data) {
