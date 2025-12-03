@@ -79,8 +79,8 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 	return true;
 }
 
-void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_info, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data) {
-	vkWaitForFences(frame_data->logical_dev, 1, &frame_data->in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
+void draw_frame(const NGVRendererSettings *settings, const NGVRenderer *renderer) {
+	vkWaitForFences(renderer->frame_data->logical_dev, 1, &renderer->frame_data->in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
 
 	// https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#vkAcquireNextImageKHR
 	// pImageIndex is a pointer to a uint32_t in which the index of the next image to use (i.e. an index into the array of images returned by vkGetSwapchainImagesKHR) is returned.
@@ -89,11 +89,11 @@ void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_in
 	// I do this if I need an accumulation buffer, i.e. never swapping and never clearing the image
 	uint32_t img_index = 0;
 	if (!settings->accumulation_buffer) {
-		auto res = vkAcquireNextImageKHR(frame_data->logical_dev, setup_info->swapchain.swapchain, UINT64_MAX, frame_data->image_available[frame_index], VK_NULL_HANDLE, &img_index);
+		auto res = vkAcquireNextImageKHR(renderer->frame_data->logical_dev, renderer->setup_info->swapchain.swapchain, UINT64_MAX, renderer->frame_data->image_available[frame_index], VK_NULL_HANDLE, &img_index);
 
 		if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 			llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
-			re_create_swapchain(setup_info, static_info);
+			re_create_swapchain(renderer->setup_info, renderer->static_info);
 			return;
 		} else if (res == VK_SUBOPTIMAL_KHR) {
 			llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
@@ -102,16 +102,16 @@ void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_in
 		}
 	}
 
-	update_uniform_buffer(setup_info, &frame_data->uniform_buff_mapped[frame_index]);
+	update_uniform_buffer(renderer->setup_info, &renderer->frame_data->uniform_buff_mapped[frame_index]);
 
-	vkResetFences(frame_data->logical_dev, 1, &frame_data->in_flight_fence[frame_index]);
+	vkResetFences(renderer->frame_data->logical_dev, 1, &renderer->frame_data->in_flight_fence[frame_index]);
 
-	vkResetCommandBuffer(frame_data->cmd_buff[frame_index], 0);
+	vkResetCommandBuffer(renderer->frame_data->cmd_buff[frame_index], 0);
 
-	record_cmd_buff(settings, setup_info, frame_data, img_index);
+	record_cmd_buff(settings, renderer->setup_info, renderer->frame_data, img_index);
 
-	VkSemaphore          signal_sems[] = {frame_data->render_finished[frame_index]};
-	VkSemaphore          wait_sems[]   = {frame_data->image_available[frame_index]};
+	VkSemaphore          signal_sems[] = {renderer->frame_data->render_finished[frame_index]};
+	VkSemaphore          wait_sems[]   = {renderer->frame_data->image_available[frame_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	VkSubmitInfo         submit_info   = {};
 	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -121,14 +121,14 @@ void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_in
 	submit_info.pSignalSemaphores      = signal_sems;
 	submit_info.pWaitDstStageMask      = wait_stages;
 	submit_info.commandBufferCount     = 1;
-	submit_info.pCommandBuffers        = &frame_data->cmd_buff[frame_index];
+	submit_info.pCommandBuffers        = &renderer->frame_data->cmd_buff[frame_index];
 
-	auto res = vkQueueSubmit(setup_info->device_queues.graphics, 1, &submit_info, frame_data->in_flight_fence[frame_index]);
+	auto res = vkQueueSubmit(renderer->setup_info->device_queues.graphics, 1, &submit_info, renderer->frame_data->in_flight_fence[frame_index]);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
 	}
 
-	VkSwapchainKHR   swapchains[]   = {setup_info->swapchain.swapchain};
+	VkSwapchainKHR   swapchains[]   = {renderer->setup_info->swapchain.swapchain};
 	VkPresentInfoKHR present_info   = {};
 	present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
@@ -138,7 +138,7 @@ void draw_frame(const NGVRendererSettings *settings, VulkanStaticInfo *static_in
 	present_info.pImageIndices      = &img_index;
 	present_info.pResults           = nullptr; // Optional
 
-	vkQueuePresentKHR(setup_info->device_queues.present, &present_info);
+	vkQueuePresentKHR(renderer->setup_info->device_queues.present, &present_info);
 
 	frame_index = (frame_index + 1) % MAX_CONCURRENT_FRAMES;
 }

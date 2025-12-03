@@ -184,3 +184,9 @@ typedef struct {
 	void            *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
 	TextureData      textures;
 } VulkanFrameData;
+
+typedef struct {
+	VulkanStaticInfo *static_info;
+	VulkanSetupInfo  *setup_info;
+	VulkanFrameData  *frame_data;
+} NGVRenderer;
