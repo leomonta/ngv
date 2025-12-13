@@ -1,7 +1,6 @@
 #include "vulkan_ops.h"
 
 #include "logger.h"
-#include "shader.h"
 #include "vkinit_utils.h"
 #include "vulkan_memory.h"
 #include "vulkan_setup.h"

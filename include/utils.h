@@ -25,25 +25,14 @@ typedef uint64_t longBitfield;
 
 #define FALLBACK_PTR(main, fallback) (main != nullptr && main != NULL ? main : fallback)
 
+
 /**
  * a realloc re-implemetation to behave like I want
  * if ptr == NULL || ptr == nullptr return malloc(size)
  * if size == 0 && ptr != NULL && ptr != nullptr free(ptr)
  * else return realloc(pre, size)
  */
-void *_realloc(void *ptr, size_t size) {
-
-	if (ptr == NULL || ptr == nullptr) {
-		return malloc(size);
-	}
-
-	if (size == 0 && ptr != NULL && ptr != nullptr) {
-		free(ptr);
-		return nullptr;
-	}
-
-	return realloc(ptr, size);
-}
+void *_realloc(void *ptr, size_t size);
 
 /**
  * Retrives the values at index `i` from the bitfield `bf`

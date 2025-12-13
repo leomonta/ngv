@@ -620,6 +620,8 @@ VkPolygonMode ngv_to_vk_geometry_drawn(const GeometryDraw gd) {
 			return VK_POLYGON_MODE_POINT;
 	}
 
+	llog(LOG_ERROR, "[ENUM] Received enum value not accounted for: %d\n", gd);
+	return 0;
 }
 
 VkPrimitiveTopology ngv_to_vk_topology(const Topology tp) {
@@ -631,6 +633,9 @@ VkPrimitiveTopology ngv_to_vk_topology(const Topology tp) {
 			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 			break;
 	}
+
+	llog(LOG_ERROR, "[ENUM] Received enum value not accounted for: %d\n", tp);
+	return 0;
 }
 
 bool create_pipeline(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info) {

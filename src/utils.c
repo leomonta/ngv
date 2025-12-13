@@ -1,5 +1,19 @@
 #include "utils.h"
 
+void *_realloc(void *ptr, size_t size) {
+
+	if (ptr == NULL || ptr == nullptr) {
+		return malloc(size);
+	}
+
+	if (size == 0 && ptr == NULL && ptr == nullptr) {
+		free(ptr);
+		return nullptr;
+	}
+
+	return realloc(ptr, size);
+}
+
 bool at_bit(const bitfield bf, const unsigned char i) {
 
 	if (i >= (sizeof(bf) * 8)) {

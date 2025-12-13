@@ -197,7 +197,7 @@ VkPhysicalDevice get_chosen_device(const VkPhysicalDevice *devs, const uint32_t 
 
 	for (size_t i = 0; i < count; ++i) {
 		vkGetPhysicalDeviceProperties(devs[i], &props);
-		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %ld\n", props.deviceID);
+		llog(LOG_DEBUG, "[PHYSICAL DEVICE] ID = %u\n", props.deviceID);
 		if (props.deviceID == preferred_dev_id) {
 			res = devs[i];
 		}

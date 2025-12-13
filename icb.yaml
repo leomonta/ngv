@@ -14,7 +14,7 @@ default:
   linker_args: rcs
 
 debug:
-  compiler_args: -g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion -fsanitize=leak -fsanitize=address
+  compiler_args: -ggdb3 -std=c23 -Wall -Wconversion -Wshadow -Wextra -Wuninitialized -Wimplicit-fallthrough=5 -Wmisleading-indentation -Wstrict-overflow=5 -Wstringop-overflow=4 -Wunknown-pragmas -Wsuggest-attribute=pure -Wsuggest-attribute=cold -Wsuggest-attribute=noreturn -Wsuggest-attribute=const -Wsuggest-attribute=format -Wsuggest-attribute=malloc -Wstrict-aliasing -Wbad-function-cast -Wcast-qual -Wcast-align -Wcast-function-type -Wwrite-strings -Wlogical-op -fstack-protector-strong -fstrict-aliasing -fsanitize=address -fsanitize=leak -fsanitize=undefined -DDEBUG
 
 no-asan:
   compiler_args: -g3 -std=c23 -Wall -DDEBUG -Wextra -Wconversion
