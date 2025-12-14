@@ -8,14 +8,20 @@
 #include <errno.h>
 #include <string.h>
 
+#ifdef USE_VALIDATION_LAYERS
+
+#	define VALIDATION_EXTENSIONS       VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+#	define VALIDATION_EXTENSIONS_COUNT 1
+#endif
+
 bool create_static_info(const NGVRendererSettings *settings, VulkanStaticInfo *static_info) {
+	if (!init_window(settings, &static_info->system_window)) {
+		return false;
+	}
 	if (!create_instance(&static_info->vulkan_instance)) {
 		return false;
 	}
 	if (!create_surface(static_info)) {
-		return false;
-	}
-	if (!init_window(settings, &static_info->system_window)) {
 		return false;
 	}
 	if (!pick_physical_device(settings, static_info)) {
@@ -115,7 +121,7 @@ const char **get_required_extensions(uint32_t *count) {
 	memcpy(exts, glfw_exts, glfw_count * sizeof(const char *));
 
 #ifdef USE_VALIDATION_LAYERS
-	exts[*count - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+	exts[*count - 1] = VALIDATION_EXTENSIONS;
 #endif
 
 	return exts;

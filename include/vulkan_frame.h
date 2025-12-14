@@ -166,12 +166,3 @@ bool destroy_uniform_buffer(VulkanFrameData *frame_data);
  * @return if the operation was successfull or not
  */
 bool create_descriptor_set(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info);
-
-/**
- * Destroys the descriptor set
- *
- * @param[in] `frame_data` the vulkan context to use
- *
- * @return if the operation was successfull or not
- */
-bool destroy_descriptor_set(VulkanFrameData *frame_data);

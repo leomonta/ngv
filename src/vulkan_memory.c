@@ -2,7 +2,6 @@
 
 #include "cglm_proxy.h"
 #include "logger.h"
-#include "vkinit_utils.h"
 #include "vulkan/vulkan_core.h"
 
 #include <string.h>

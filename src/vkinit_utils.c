@@ -40,59 +40,6 @@ bool check_validation_layer_support() {
 #endif
 }
 
-QueuesIndicies get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
-
-	QueuesIndicies res   = {};
-	uint32_t       count = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-
-	if (count <= 0) {
-		llog(LOG_ERROR, "[QUEUES] Could not find any queue family\n");
-		return res;
-	}
-
-	VkQueueFamilyProperties *queues = malloc(sizeof(VkQueueFamilyProperties) * count);
-	TEST_MALLOC_RET(queues, res)
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queues);
-
-	for (uint32_t i = 0; i < count; ++i) {
-		auto qf = queues[i];
-
-		if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT && at_bit(res.available_families, GRAPHIC_QUEUE) == false) {
-			res.graphics = i;
-			set_bit(&res.available_families, GRAPHIC_QUEUE);
-		}
-
-		if (qf.queueFlags & VK_QUEUE_COMPUTE_BIT && at_bit(res.available_families, COMPUTE_QUEUE) == false) {
-			res.compute = i;
-			set_bit(&res.available_families, COMPUTE_QUEUE);
-		}
-
-		// set this only if it's not also a graphic queue
-		if (qf.queueFlags & VK_QUEUE_TRANSFER_BIT && !(qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) && at_bit(res.available_families, TRANSFER_QUEUE) == false) {
-			res.transfer = i;
-			set_bit(&res.available_families, TRANSFER_QUEUE);
-		}
-
-		VkBool32 support = VK_FALSE;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
-		if (support && at_bit(res.available_families, PRESENT_QUEUE) == false) {
-			res.present = i;
-			set_bit(&res.available_families, PRESENT_QUEUE);
-		}
-	}
-
-	// any Queue family that supports graphics also supports transfers
-	// so if a transfer queue was not found I use the graphic one
-	if (at_bit(res.available_families, TRANSFER_QUEUE) == false) {
-		res.transfer = res.graphics;
-		set_bit(&res.available_families, TRANSFER_QUEUE);
-	}
-
-	free(queues);
-	return res;
-}
-
 const char *ShaderKind_str(const ShaderKind kind) {
 
 	switch (kind) {
@@ -219,40 +166,6 @@ const char *VkResult_str(const VkResult res) {
 	};
 }
 
-SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	SwapchainDetails res = {};
-
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &res.capabilities);
-
-	uint32_t count;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-
-	if (count <= 0) {
-		llog(LOG_ERROR, "[SWAPCHAIN] Could not find any available surface format\n");
-		return res;
-	}
-
-	if (count != 0) {
-		res.formats = malloc(sizeof(VkSurfaceFormatKHR) * count);
-		TEST_MALLOC_RET(res.formats, res)
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, res.formats);
-		res.formats_count = count;
-	}
-
-	count = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-
-	if (count != 0) {
-		res.modes = malloc(sizeof(VkPresentModeKHR) * count);
-		TEST_MALLOC_RET(res.formats, res)
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, res.modes);
-		res.modes_count = count;
-	}
-
-	return res;
-}
-
-
 bool create_buffer(VulkanSetupInfo *setup_info, VkPhysicalDevice physical_dev, const VkDeviceSize size, const VkBufferUsageFlags usage, const VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *buffer_memory) {
 
 	uint32_t           sharing_families[] = {setup_info->device_queues_indices.transfer, setup_info->device_queues_indices.graphics};
@@ -338,4 +251,3 @@ bool create_image(VkDevice logical_dev, VkPhysicalDevice physical_dev, uint32_t 
 
 	return true;
 }
-

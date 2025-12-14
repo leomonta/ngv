@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cglm_proxy.h"
-#include "config.h"
 #include "utils.h"
 
 #include <stddef.h>
@@ -9,6 +8,9 @@
 #include <GLFW/glfw3.h>
 #include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
+
+#define TEMP_ARRAY_SIZE 10
+#define MAX_CONCURRENT_FRAMES 2
 
 // ------------------------------------------------------------------------------------------------
 // internal Enums
@@ -69,6 +71,7 @@ typedef struct {
 	VkDescriptorSetLayout descriptor_set_layout;
 } ShaderPipeline;
 
+
 typedef struct {
 	size_t         count;
 	VkImage        objects[TEMP_ARRAY_SIZE];
@@ -124,9 +127,9 @@ typedef struct {
 	uint32_t           preferred_physical_device_id;
 	int                window_width;
 	int                window_height;
-	char              *window_name;
-	char              *vertex_shader_name;
-	char              *fragment_shader_name;
+	const char        *window_name;
+	const char        *vertex_shader_name;
+	const char        *fragment_shader_name;
 	Topology           topology;
 	GeometryDraw       geometry_drawn;
 } NGVRendererSettings;
@@ -186,7 +189,7 @@ typedef struct {
 } VulkanFrameData;
 
 typedef struct {
-	VulkanStaticInfo *static_info;
-	VulkanSetupInfo  *setup_info;
-	VulkanFrameData  *frame_data;
+	VulkanStaticInfo static_info;
+	VulkanSetupInfo  setup_info;
+	VulkanFrameData  frame_data;
 } NGVRenderer;

@@ -43,17 +43,7 @@
 #ifdef USE_VALIDATION_LAYERS
 static const char        *VALIDATION_LAYERS[]     = {"VK_LAYER_KHRONOS_validation"};
 static constexpr unsigned VALIDATION_LAYERS_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(VALIDATION_LAYERS[0]);
-
-static const char        *VALIDATION_EXTENSIONS[]     = {VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
-static constexpr unsigned VALIDATION_EXTENSIONS_COUNT = sizeof(VALIDATION_EXTENSIONS) / sizeof(VALIDATION_EXTENSIONS[0]);
 #endif
-
-// ------------------------------------------------------------------------------------------------
-// EXTENSIONS
-// ------------------------------------------------------------------------------------------------
-
-const char        *PHYSICAL_EXTENSIONS[]     = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-constexpr unsigned PHYSICAL_EXTENSIONS_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
 
 // ------------------------------------------------------------------------------------------------
 // VERSION
@@ -82,8 +72,5 @@ constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_
 
 // ????
 
-#define VULKAN_CHOSEN_PHYSICAL_DEVICE_ID 9504
 
 #define MAX_CONCURRENT_FRAMES 2
-
-#define TEMP_ARRAY_SIZE 10

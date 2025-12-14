@@ -6,6 +6,7 @@
 #include "vulkan_ops.h"
 
 #include <errno.h>
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #include <string.h>
 
@@ -82,9 +83,6 @@ bool destroy_frame_data(VulkanFrameData *frame_data) {
 	if (!destroy_uniform_buffer(frame_data)) {
 		return false;
 	}
-	if (!destroy_descriptor_set(frame_data)) {
-		return false;
-	}
 	if (!destroy_sync_objects(frame_data)) {
 		return false;
 	}
@@ -139,20 +137,21 @@ bool destroy_texture_image(VulkanFrameData *frame_data) {
 
 bool create_texture_view(const uint32_t index, VulkanFrameData *frame_data) {
 
-	VkImageViewCreateInfo vw_create           = {};
-	vw_create.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	vw_create.image                           = frame_data->textures.objects[index];
-	vw_create.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-	vw_create.format                          = VK_FORMAT_R8G8B8A8_SRGB;
-	vw_create.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-	vw_create.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-	vw_create.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-	vw_create.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-	vw_create.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-	vw_create.subresourceRange.baseMipLevel   = 0;
-	vw_create.subresourceRange.levelCount     = 1;
-	vw_create.subresourceRange.baseArrayLayer = 0;
-	vw_create.subresourceRange.layerCount     = 1;
+	VkImageViewCreateInfo vw_create = {
+		.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.image                           = frame_data->textures.objects[index],
+		.viewType                        = VK_IMAGE_VIEW_TYPE_2D,
+		.format                          = VK_FORMAT_R8G8B8A8_SRGB,
+		.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+		.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+		.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+		.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+		.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+		.subresourceRange.baseMipLevel   = 0,
+		.subresourceRange.levelCount     = 1,
+		.subresourceRange.baseArrayLayer = 0,
+		.subresourceRange.layerCount     = 1,
+	};
 
 	auto res = vkCreateImageView(frame_data->logical_dev, &vw_create, nullptr, &frame_data->textures.views[index]);
 	if (res != VK_SUCCESS) {
@@ -207,50 +206,6 @@ bool destroy_texture_sampler(VulkanFrameData *frame_data, uint32_t index) {
 
 	vkDestroySampler(frame_data->logical_dev, frame_data->textures.samplers[index], nullptr);
 
-	return true;
-}
-
-bool create_framebuffers(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
-
-	setup_info->swapchain.framebuffers = realloc(setup_info->swapchain.framebuffers, sizeof(VkFramebuffer) * setup_info->swapchain.buffers_count);
-	TEST_MALLOC(setup_info->swapchain.framebuffers)
-
-	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
-		VkImageView attachments[2] = {
-		    setup_info->swapchain.views[i],
-		    setup_info->depth_objects.view};
-
-		VkFramebufferCreateInfo fb_create = {};
-		fb_create.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fb_create.renderPass              = setup_info->renderpass;
-		fb_create.attachmentCount         = 2;
-		fb_create.pAttachments            = attachments;
-		fb_create.width                   = setup_info->swapchain.extent.width;
-		fb_create.height                  = setup_info->swapchain.extent.height;
-		fb_create.layers                  = 1;
-
-		auto res = vkCreateFramebuffer(frame_data->logical_dev, &fb_create, nullptr, &setup_info->swapchain.framebuffers[i]);
-		if (res != VK_SUCCESS) {
-			llog(LOG_FATAL, "[FRAMBUFFER] Could not create a frambuffer: %s\n", VkResult_str(res));
-			free(setup_info->swapchain.framebuffers);
-			return false;
-		}
-	}
-
-	llog(LOG_DEBUG, "[FRAMBUFFER] frambuffers successfully created\n");
-
-	return true;
-}
-
-bool destroy_framebuffers(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
-
-	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
-		vkDestroyFramebuffer(frame_data->logical_dev, setup_info->swapchain.framebuffers[i], nullptr);
-	}
-	free(setup_info->swapchain.framebuffers);
-	setup_info->swapchain.framebuffers = nullptr;
-
-	llog(LOG_DEBUG, "[FRAMBUFFER] framebuffers successfully destroyed\n");
 	return true;
 }
 

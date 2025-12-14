@@ -24,6 +24,9 @@ typedef struct {
 #include <errno.h>
 #include <string.h>
 
+const char        *PHYSICAL_EXTENSIONS[]     = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+constexpr unsigned PHYSICAL_EXTENSIONS_COUNT = sizeof(PHYSICAL_EXTENSIONS) / sizeof(PHYSICAL_EXTENSIONS[0]);
+
 #define NEEDED_QUEUES       (GRAPHIC_QUEUE | PRESENT_QUEUE | TRANSFER_QUEUE)
 #define NEEDED_QUEUES_COUNT 3
 
@@ -31,6 +34,14 @@ bool create_setup_info(const NGVRendererSettings *settings, VulkanSetupInfo *set
 
 	if (!create_logical_device(setup_info, static_info)) {
 		return false;
+	}
+
+	if (!create_command_pool(setup_info)) {
+		return false;
+	}
+
+	if (!create_command_buffer(setup_info)) {
+		return true;
 	}
 
 	if (!create_swapchain(setup_info, static_info)) {
@@ -45,15 +56,15 @@ bool create_setup_info(const NGVRendererSettings *settings, VulkanSetupInfo *set
 		return false;
 	}
 
+	if (!create_renderpass(setup_info)) {
+		return false;
+	}
+
 	if (!create_framebuffers(setup_info)) {
 		return false;
 	}
 
 	if (!create_pipeline(settings, setup_info)) {
-		return false;
-	}
-
-	if (!create_renderpass(setup_info)) {
 		return false;
 	}
 
@@ -70,10 +81,6 @@ bool destroy_setup_info(VulkanSetupInfo *setup_info) {
 		return false;
 	}
 
-	if (!destroy_renderpass(setup_info)) {
-		return false;
-	}
-
 	if (!destroy_pipeline(setup_info)) {
 		return false;
 	}
@@ -87,6 +94,14 @@ bool destroy_setup_info(VulkanSetupInfo *setup_info) {
 	}
 
 	if (!destroy_framebuffers(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_renderpass(setup_info)) {
+		return false;
+	}
+
+	if (!destroy_command_pool(setup_info)) {
 		return false;
 	}
 
@@ -151,7 +166,7 @@ bool get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface, QueuesInd
 
 bool create_logical_device(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info) {
 
-	if (get_queue_families(static_info->physical_dev, static_info->surface, &setup_info->device_queues_indices)) {
+	if (!get_queue_families(static_info->physical_dev, static_info->surface, &setup_info->device_queues_indices)) {
 		return false;
 	}
 
@@ -202,6 +217,7 @@ bool create_logical_device(VulkanSetupInfo *setup_info, VulkanStaticInfo *static
 
 	VkPhysicalDeviceFeatures dev_features = {};
 	dev_features.samplerAnisotropy        = VK_TRUE;
+	dev_features.fillModeNonSolid         = VK_TRUE;
 
 	VkDeviceCreateInfo dev_create = {
 	    .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -389,7 +405,7 @@ bool create_swapchain(VulkanSetupInfo *setup_info, VulkanStaticInfo *static_info
 		return false;
 	}
 
-	setup_info->swapchain.format    = format.format;
+	setup_info->swapchain.format = format.format;
 
 	free(scd.formats);
 	free(scd.modes);
@@ -612,12 +628,12 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info) {
 
 VkPolygonMode ngv_to_vk_geometry_drawn(const GeometryDraw gd) {
 	switch (gd) {
-		case GEOMETRY_FILL:
-			return VK_POLYGON_MODE_FILL;
-		case GEOMETRY_WIREFRAME:
-			return VK_POLYGON_MODE_LINE;
-		case GEOMETRY_POINT:
-			return VK_POLYGON_MODE_POINT;
+	case GEOMETRY_FILL:
+		return VK_POLYGON_MODE_FILL;
+	case GEOMETRY_WIREFRAME:
+		return VK_POLYGON_MODE_LINE;
+	case GEOMETRY_POINT:
+		return VK_POLYGON_MODE_POINT;
 	}
 
 	llog(LOG_ERROR, "[ENUM] Received enum value not accounted for: %d\n", gd);
@@ -626,12 +642,12 @@ VkPolygonMode ngv_to_vk_geometry_drawn(const GeometryDraw gd) {
 
 VkPrimitiveTopology ngv_to_vk_topology(const Topology tp) {
 	switch (tp) {
-		case TOPOLOGY_TRIANGLE:
-			return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-			break;
-		case TOPOLOGY_POINT:
-			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-			break;
+	case TOPOLOGY_TRIANGLE:
+		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		break;
+	case TOPOLOGY_POINT:
+		return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		break;
 	}
 
 	llog(LOG_ERROR, "[ENUM] Received enum value not accounted for: %d\n", tp);
@@ -983,7 +999,6 @@ bool destroy_renderpass(VulkanSetupInfo *setup_info) {
 
 	return true;
 }
-
 
 bool create_descriptor_pool(VulkanSetupInfo *setup_info) {
 	VkDescriptorPoolSize pool_sz[2] = {};

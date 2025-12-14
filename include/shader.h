@@ -103,11 +103,11 @@ bool compile_shader(const char *code, const size_t size, const ShaderKind kind, 
 bool release_shader(shaderc_compilation_result_t res);
 
 /**
- * create a shader module 
+ * create a shader module
  *
  * @param[in] `filename` the filename of the shader code
  * @param[in] `shader_kind` the kind of shader we are dealing with
- * @param[in] `logical_dev` the logical device to refer this 
+ * @param[in] `logical_dev` the logical device to refer this
  * @param[out] `module` a valid handle to a `VkShaderModule`
  * @param[out] `shaderc_result` the `shaderc` result handle that needs to be closed later
  *

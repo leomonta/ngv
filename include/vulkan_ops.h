@@ -19,7 +19,7 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
  *
  * @param[in] `vri` the vulkan context to user
  */
-void draw_frame(const NGVRendererSettings *settings, const NGVRenderer *renderer);
+void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer);
 
 /**
  * Sets the given `command_buffer` to a begun one from the pool specified by `kind`

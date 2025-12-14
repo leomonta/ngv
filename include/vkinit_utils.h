@@ -37,16 +37,6 @@ const char *ShaderKind_str(const ShaderKind kind);
 const char *VkResult_str(const VkResult res);
 
 /**
- * Returns the details of the device swapchain
- *
- * @param[in] `device` the physical device that supports the swapchain
- * @param[in] `surface` the surface of the swapchain
- *
- * @return a `swapchain` details struct
- */
-SwapchainDetails get_swapchain_details(VkPhysicalDevice device, VkSurfaceKHR surface);
-
-/**
  * Creates and allocates a GPU side buffer
  *
  * @param[in] `setup_infp` the engine setup information
