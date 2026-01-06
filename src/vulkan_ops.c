@@ -5,7 +5,9 @@
 #include "vulkan_memory.h"
 #include "vulkan_setup.h"
 
-static uint32_t frame_index = 0;
+static uint32_t frame_index         = 0;
+static bool     first_img_acquired  = false;
+static uint32_t current_image_index = 0;
 
 bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index) {
 	VkCommandBufferBeginInfo beg_info = {};
@@ -78,27 +80,38 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 	return true;
 }
 
+VkSemaphore get_image_available_semaphore(const NGVRendererSettings *settings, NGVRenderer *renderer) {
+	if (settings->accumulation_buffer) {
+		return VK_NULL_HANDLE;
+	} else {
+		return renderer->frame_data.image_available[frame_index];
+	}
+}
+
+uint32_t get_next_image(NGVRenderer *renderer) {
+
+	uint32_t img_index = 0;
+	auto     res       = vkAcquireNextImageKHR(renderer->frame_data.logical_dev, renderer->setup_info.swapchain.swapchain, UINT64_MAX, renderer->frame_data.image_available[frame_index], VK_NULL_HANDLE, &img_index);
+
+	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+		llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
+		re_create_swapchain(&renderer->setup_info, &renderer->static_info);
+	} else if (res == VK_SUBOPTIMAL_KHR) {
+		llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
+	} else if (res != VK_SUCCESS) {
+		llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(res));
+	}
+	return img_index;
+}
+
 void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 	vkWaitForFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[frame_index], VK_TRUE, UINT64_MAX);
 
-	// https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#vkAcquireNextImageKHR
-	// pImageIndex is a pointer to a uint32_t in which the index of the next image to use (i.e. an index into the array of images returned by vkGetSwapchainImagesKHR) is returned.
-	//
-	// this makes me think that there is ALWAYS a 0 index, because it talks of 'index into the array'
-	// I do this if I need an accumulation buffer, i.e. never swapping and never clearing the image
-	uint32_t img_index = 0;
-	if (!settings->accumulation_buffer) {
-		auto res = vkAcquireNextImageKHR(renderer->frame_data.logical_dev, renderer->setup_info.swapchain.swapchain, UINT64_MAX, renderer->frame_data.image_available[frame_index], VK_NULL_HANDLE, &img_index);
-
-		if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-			llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
-			re_create_swapchain(&renderer->setup_info, &renderer->static_info);
-			return;
-		} else if (res == VK_SUBOPTIMAL_KHR) {
-			llog(LOG_INFO, "[DRAWING] The swapchain is suboptimal, doing nothing about it\n");
-		} else if (res != VK_SUCCESS) {
-			llog(LOG_ERROR, "[DRAWING] Image Acquisition from swapchain failed: %s\n", VkResult_str(res));
-		}
+	if (!first_img_acquired) {
+		current_image_index = get_next_image(renderer);
+		first_img_acquired  = true;
+	} else if (!settings->accumulation_buffer) {
+		current_image_index = get_next_image(renderer);
 	}
 
 	update_uniform_buffer(&renderer->setup_info, &renderer->frame_data.uniform_buff_mapped[frame_index]);
@@ -107,39 +120,44 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 
 	vkResetCommandBuffer(renderer->frame_data.cmd_buff[frame_index], 0);
 
-	record_cmd_buff(settings, &renderer->setup_info, &renderer->frame_data, img_index);
+	record_cmd_buff(settings, &renderer->setup_info, &renderer->frame_data, current_image_index);
 
+	VkSemaphore          img_available = get_image_available_semaphore(settings, renderer);
 	VkSemaphore          signal_sems[] = {renderer->frame_data.render_finished[frame_index]};
-	VkSemaphore          wait_sems[]   = {renderer->frame_data.image_available[frame_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	VkSubmitInfo         submit_info   = {};
-	submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.waitSemaphoreCount     = 1;
-	submit_info.pWaitSemaphores        = wait_sems;
-	submit_info.signalSemaphoreCount   = 1;
-	submit_info.pSignalSemaphores      = signal_sems;
-	submit_info.pWaitDstStageMask      = wait_stages;
-	submit_info.commandBufferCount     = 1;
-	submit_info.pCommandBuffers        = &renderer->frame_data.cmd_buff[frame_index];
 
+	VkSubmitInfo submit_info = {
+	    .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+	    .waitSemaphoreCount   = img_available != VK_NULL_HANDLE,
+	    .pWaitSemaphores      = &img_available,
+	    .signalSemaphoreCount = 1,
+	    .pSignalSemaphores    = signal_sems,
+	    .pWaitDstStageMask    = wait_stages,
+	    .commandBufferCount   = 1,
+	    .pCommandBuffers      = &renderer->frame_data.cmd_buff[frame_index],
+	};
+
+	// in_flight_fence is signaled when the command submission is done
 	auto res = vkQueueSubmit(renderer->setup_info.device_queues.graphics, 1, &submit_info, renderer->frame_data.in_flight_fence[frame_index]);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
 	}
 
-	VkSwapchainKHR   swapchains[]   = {renderer->setup_info.swapchain.swapchain};
-	VkPresentInfoKHR present_info   = {};
-	present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores    = signal_sems;
-	present_info.swapchainCount     = 1;
-	present_info.pSwapchains        = swapchains;
-	present_info.pImageIndices      = &img_index;
-	present_info.pResults           = nullptr; // Optional
+	VkSwapchainKHR swapchains[] = {renderer->setup_info.swapchain.swapchain};
+
+	VkPresentInfoKHR present_info = {
+	    .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+	    .waitSemaphoreCount = 1,
+	    .pWaitSemaphores    = signal_sems, // wait on the previously signaled semaphore
+	    .swapchainCount     = 1,
+	    .pSwapchains        = swapchains,
+	    .pImageIndices      = &current_image_index,
+	    .pResults           = nullptr, // Optional
+	};
 
 	vkQueuePresentKHR(renderer->setup_info.device_queues.present, &present_info);
 
-	frame_index = (frame_index + 1) % MAX_CONCURRENT_FRAMES;
+	frame_index = (frame_index + 1) % (MAX_CONCURRENT_FRAMES + 1);
 }
 
 bool begin_temporary_command_buffer(VulkanSetupInfo *setup_info, QueueKind kind, VkCommandBuffer *command_buffer) {
