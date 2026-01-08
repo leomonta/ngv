@@ -10,7 +10,7 @@
 #include <vulkan/vulkan_core.h>
 
 #define TEMP_ARRAY_SIZE 10
-#define MAX_CONCURRENT_FRAMES 2
+#define MAX_CONCURRENT_FRAMES 3
 
 // ------------------------------------------------------------------------------------------------
 // internal Enums

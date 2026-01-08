@@ -70,7 +70,3 @@ constexpr unsigned       PIPELINE_DYNAMIC_STATE_COUNT = sizeof(PIPELINE_DYNAMIC_
 
 #define STAGING_BUFFER_SIZE 65536 // 2^16
 
-// ????
-
-
-#define MAX_CONCURRENT_FRAMES 2
