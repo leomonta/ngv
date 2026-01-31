@@ -27,13 +27,13 @@ bool create_renderer(const NGVRendererSettings *settings, NGVRenderer *renderer)
 
 bool destroy_renderer(NGVRenderer *renderer) {
 
-	if (!destroy_static_info(&renderer->static_info)) {
+	if (!destroy_frame_data(&renderer->frame_data)) {
 		return false;
 	}
 	if (!destroy_setup_info(&renderer->setup_info)) {
 		return false;
 	}
-	if (!destroy_frame_data(&renderer->frame_data)) {
+	if (!destroy_static_info(&renderer->static_info)) {
 		return false;
 	}
 

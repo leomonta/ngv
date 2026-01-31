@@ -5,6 +5,8 @@
 #include "shader.h"
 #include "vkinit_utils.h"
 
+#include <assert.h>
+
 /*
 
 typedef struct {

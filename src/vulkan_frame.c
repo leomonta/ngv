@@ -43,7 +43,7 @@ bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *fra
 	if (!create_staging_buffer(frame_data, setup_info)) {
 		return false;
 	}
-	if (!create_vertex_buffer(frame_data, setup_info, nullptr, 8196)) {
+	if (!create_vertex_buffer(frame_data, setup_info, nullptr, 8192)) {
 		return false;
 	}
 	if (!create_index_buffer(frame_data, setup_info, nullptr, 8192)) {
