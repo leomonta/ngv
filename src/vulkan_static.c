@@ -225,7 +225,7 @@ bool pick_physical_device(const NGVRendererSettings *settings, VulkanStaticInfo 
 
 	VkPhysicalDevice chosen_dev;
 
-	if (settings->use_preferred_device) {
+	if (!settings->use_preferred_device) {
 		chosen_dev = devs[0];
 	} else {
 		chosen_dev = get_chosen_device(devs, count, settings->preferred_physical_device_id); // devs[VULKAN_CHOSEN_PHYSICAL_DEVICE_INDEX];

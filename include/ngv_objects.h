@@ -9,7 +9,7 @@
 #include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
-#define TEMP_ARRAY_SIZE 10
+#define TEMP_ARRAY_SIZE       10
 #define MAX_CONCURRENT_FRAMES 3
 
 // ------------------------------------------------------------------------------------------------
@@ -70,7 +70,6 @@ typedef struct {
 	VkPipeline            object;
 	VkDescriptorSetLayout descriptor_set_layout;
 } ShaderPipeline;
-
 
 typedef struct {
 	size_t         count;
@@ -170,7 +169,7 @@ typedef struct {
 typedef struct {
 	VkPhysicalDevice physical_dev; // the same present in static info, just a shortcut
 	VkDevice         logical_dev;  // the same present in setup info, just a shortcut
-	uint32_t         index_count;
+	size_t           index_count;
 	VkBuffer         index_buff;
 	VkDeviceMemory   index_buff_mem;
 	VkBuffer         vertex_buff;

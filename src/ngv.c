@@ -47,6 +47,7 @@ bool draw(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 
 bool push_data(NGVRenderer *renderer, const void *verticies, const size_t verticies_size, const void *indicies, const size_t indicies_size) {
 	push_to_buffer(&renderer->setup_info, &renderer->frame_data, renderer->frame_data.index_buff, indicies, indicies_size);
+	renderer->frame_data.index_count = indicies_size;
 	push_to_buffer(&renderer->setup_info, &renderer->frame_data, renderer->frame_data.vertex_buff, verticies, verticies_size);
 	return true;
 }

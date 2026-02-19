@@ -6,7 +6,7 @@
 	VulkanStaticInfo __ngv_static = {}; \
 	VulkanSetupInfo  __ngv_setup  = {}; \
 	VulkanFrameData  __ngv_frame  = {}; \
-	NGVRenderer      nm           = {&__ngv_static, &__ngv_setup, &__ngv_frame}
+	NGVRenderer      nm           = {__ngv_static, __ngv_setup, __ngv_frame}
 
 bool create_renderer(const NGVRendererSettings *settings, NGVRenderer *renderer);
 
