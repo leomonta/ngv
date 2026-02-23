@@ -169,7 +169,7 @@ typedef struct {
 typedef struct {
 	VkPhysicalDevice physical_dev; // the same present in static info, just a shortcut
 	VkDevice         logical_dev;  // the same present in setup info, just a shortcut
-	size_t           index_count;
+	uint32_t         index_count;
 	VkBuffer         index_buff;
 	VkDeviceMemory   index_buff_mem;
 	VkBuffer         vertex_buff;

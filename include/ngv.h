@@ -14,4 +14,4 @@ bool destroy_renderer(NGVRenderer *renderer);
 
 bool draw(const NGVRendererSettings *settings, NGVRenderer *renderer);
 
-bool push_data(NGVRenderer *renderer, const void *verticies, const size_t verticies_size, const void *indicies, const size_t indicies_size);
+bool push_data(NGVRenderer *renderer, const void *verticies, const uint32_t verticies_size, const uint32_t *indicies, const uint32_t indicies_count);
