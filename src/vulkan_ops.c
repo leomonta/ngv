@@ -81,13 +81,11 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 }
 
 VkSemaphore get_image_available_semaphore(const NGVRendererSettings *settings, NGVRenderer *renderer) {
-	if (settings->accumulation_buffer) {
-		return VK_NULL_HANDLE;
-	} else {
-		auto temp = acq_index;
+	auto temp = acq_index;
+	if (!settings->accumulation_buffer) {
 		acq_index = (acq_index + 1) % MAX_CONCURRENT_FRAMES;
-		return renderer->frame_data.image_available[temp];
 	}
+	return renderer->frame_data.image_available[temp];
 }
 
 uint32_t get_next_image(NGVRenderer *renderer) {
@@ -111,7 +109,9 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 		vkWaitForFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[current_image_index], VK_TRUE, UINT64_MAX);
 	}
 
+	VkSemaphore img_available = VK_NULL_HANDLE;
 	if (!first_img_acquired) {
+		img_available       = get_image_available_semaphore(settings, renderer);
 		current_image_index = get_next_image(renderer);
 		first_img_acquired  = true;
 	} else if (!settings->accumulation_buffer) {
@@ -126,7 +126,6 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 
 	record_cmd_buff(settings, &renderer->setup_info, &renderer->frame_data, current_image_index);
 
-	VkSemaphore          img_available = get_image_available_semaphore(settings, renderer);
 	VkSemaphore          signal_sems[] = {renderer->frame_data.render_finished[current_image_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
