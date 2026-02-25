@@ -110,12 +110,11 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 	}
 
 	VkSemaphore img_available = VK_NULL_HANDLE;
-	if (!first_img_acquired) {
-		img_available       = get_image_available_semaphore(settings, renderer);
-		current_image_index = get_next_image(renderer);
+
+	if (!first_img_acquired || !settings->accumulation_buffer) {
 		first_img_acquired  = true;
-	} else if (!settings->accumulation_buffer) {
 		current_image_index = get_next_image(renderer);
+		img_available       = get_image_available_semaphore(settings, renderer);
 	}
 
 	update_uniform_buffer(&renderer->setup_info, &renderer->frame_data.uniform_buff_mapped[current_image_index]);
@@ -158,6 +157,7 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 	    .pResults           = nullptr, // Optional
 	};
 
+	// may use VK_KHR_swapchain_maintenance1 to user a fence here for timing
 	vkQueuePresentKHR(renderer->setup_info.device_queues.present, &present_info);
 }
 
