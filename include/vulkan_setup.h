@@ -115,7 +115,7 @@ bool destroy_framebuffers(VulkanSetupInfo *setup_info);
  * One of the most important steps of setup, there should be a lot of settings here
  * Setups up the entire pipeline with attachments, shaders, vertex specification and etc
  *
- * @param[in] `settings` the setting to control pipiline creation fetures
+ * @param[in] `settings` the setting to control pipeline creation fetures
  * @param[in|out] `setup_info` where to put the created objects
  *
  * @return if the operation was successfull or not
@@ -151,11 +151,12 @@ bool destroy_command_pool(VulkanSetupInfo *setup_info);
  * Creates the graphics pipleline with all of its stages
  * shaders, vertexes layout, uniforms...
  *
+ * @param[in] `settings` the setting to control renderpass creation fetures
  * @param[in] `setup_info` the vulkan context to use
  *
  * @return if the operation was successfull or not
  */
-bool create_renderpass(VulkanSetupInfo *setup_info);
+bool create_renderpass(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info);
 
 /**
  * Destroys the pipeline

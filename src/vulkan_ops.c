@@ -41,7 +41,7 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 		renderpass_info.framebuffer           = setup_info->swapchain.framebuffers[img_index];
 		renderpass_info.renderArea.offset     = (VkOffset2D){0, 0};
 		renderpass_info.renderArea.extent     = setup_info->swapchain.extent;
-		renderpass_info.clearValueCount       = 2;
+		renderpass_info.clearValueCount       = settings->accumulation_buffer ? 0 : 2;
 		renderpass_info.pClearValues          = clear_colors;
 
 		vkCmdBeginRenderPass(frame_data->cmd_buff[current_image_index], &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);

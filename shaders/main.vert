@@ -17,5 +17,5 @@ void main() {
 	gl_Position = vec4(in_position, 1.);
 	out_color = in_color;
 	out_tex_coords = in_tex_coords;
-	gl_PointSize = 2.;
+	gl_PointSize = 0.1;
 }
