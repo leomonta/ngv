@@ -8,10 +8,14 @@
 	VulkanFrameData  __ngv_frame  = {}; \
 	NGVRenderer      nm           = {__ngv_static, __ngv_setup, __ngv_frame}
 
-bool create_renderer(const NGVRendererSettings *settings, NGVRenderer *renderer);
+bool NGV_create_renderer(const NGVRendererSettings *settings, NGVRenderer *renderer);
 
-bool destroy_renderer(NGVRenderer *renderer);
+bool NGV_destroy_renderer(NGVRenderer *renderer);
 
-bool draw(const NGVRendererSettings *settings, NGVRenderer *renderer);
+bool NGV_draw(const NGVRendererSettings *settings, NGVRenderer *renderer);
 
-bool push_data(NGVRenderer *renderer, const void *verticies, const uint32_t verticies_size, const uint32_t *indicies, const uint32_t indicies_count);
+bool NGV_push_data(NGVRenderer *renderer, const void *verticies, const uint32_t verticies_size, const uint32_t *indicies, const uint32_t indicies_count);
+
+void NGV_poll_events();
+
+bool NGV_window_should_close(NGVRenderer *renderer);
