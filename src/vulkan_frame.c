@@ -31,15 +31,15 @@ typedef struct {
 */
 
 bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
-	if (!create_texture_image(setup_info, frame_data)) {
-		return false;
-	}
-	if (!create_texture_view(0, frame_data)) {
-		return false;
-	}
-	if (!create_texture_sampler(frame_data, 0)) {
-		return false;
-	}
+	// if (!create_texture_image(setup_info, frame_data)) {
+	// 	return false;
+	// }
+	// if (!create_texture_view(0, frame_data)) {
+	// 	return false;
+	// }
+	// if (!create_texture_sampler(0, frame_data)) {
+	// 	return false;
+	// }
 	if (!create_staging_buffer(frame_data, setup_info)) {
 		return false;
 	}
@@ -77,16 +77,15 @@ bool destroy_frame_data(VulkanFrameData *frame_data) {
 	if (!destroy_staging_buffer(frame_data)) {
 		return false;
 	}
-	if (!destroy_texture_sampler(frame_data, 0)) {
-		return false;
-	}
-	if (!destroy_texture_view(0, frame_data)) {
-		return false;
-	}
-	if (!destroy_texture_image(frame_data)) {
-		return false;
-	}
-	llog(LOG_INFO, "NGV frame data successfully destroted\n");
+	// if (!destroy_texture_sampler(0, frame_data)) {
+	// 	return false;
+	// }
+	// if (!destroy_texture_view(0, frame_data)) {
+	// 	return false;
+	// }
+	// if (!destroy_texture_image(frame_data)) {
+	// 	return false;
+	// }
 	return true;
 }
 
@@ -169,10 +168,12 @@ bool destroy_texture_view(const uint32_t index, VulkanFrameData *frame_data) {
 
 	vkDestroyImageView(frame_data->logical_dev, frame_data->textures.views[index], nullptr);
 
+	llog(LOG_DEBUG, "[TEXTURE] Image views successfully destroyed\n");
+
 	return true;
 }
 
-bool create_texture_sampler(VulkanFrameData *frame_data, uint32_t index) {
+bool create_texture_sampler(const uint32_t index, VulkanFrameData *frame_data) {
 
 	VkPhysicalDeviceProperties properties = {};
 	vkGetPhysicalDeviceProperties(frame_data->physical_dev, &properties);
@@ -201,11 +202,15 @@ bool create_texture_sampler(VulkanFrameData *frame_data, uint32_t index) {
 		return false;
 	}
 
+	llog(LOG_DEBUG, "[TEXTURE] Image sampler successfully created\n");
+
 	return true;
 }
-bool destroy_texture_sampler(VulkanFrameData *frame_data, uint32_t index) {
+bool destroy_texture_sampler(const uint32_t index, VulkanFrameData *frame_data) {
 
 	vkDestroySampler(frame_data->logical_dev, frame_data->textures.samplers[index], nullptr);
+
+	llog(LOG_DEBUG, "[TEXTURE] Image sampler successfully destroyed\n");
 
 	return true;
 }
@@ -261,7 +266,8 @@ bool create_descriptor_set(VulkanFrameData *frame_data, VulkanSetupInfo *setup_i
 		desc_write[1].pImageInfo           = &img_info;
 		desc_write[1].pTexelBufferView     = nullptr; // Optional
 
-		vkUpdateDescriptorSets(frame_data->logical_dev, 2, desc_write, 0, nullptr);
+		// TODO: When doing textures change 1 to whatever is needed
+		vkUpdateDescriptorSets(frame_data->logical_dev, 1, desc_write, 0, nullptr);
 	}
 
 	llog(LOG_DEBUG, "[DESCRIPTOR SET] Descriptor set successfully created\n");
@@ -344,8 +350,8 @@ bool create_staging_buffer(VulkanFrameData *frame_data, VulkanSetupInfo *setup_i
 }
 
 bool destroy_staging_buffer(VulkanFrameData *frame_data) {
-	vkFreeMemory(frame_data->logical_dev, frame_data->vertex_buff_mem, nullptr);
-	vkDestroyBuffer(frame_data->logical_dev, frame_data->vertex_buff, nullptr);
+	vkFreeMemory(frame_data->logical_dev, frame_data->staging_buff_mem, nullptr);
+	vkDestroyBuffer(frame_data->logical_dev, frame_data->staging_buff, nullptr);
 
 	llog(LOG_DEBUG, "[VMEM] Staging buffer objects successfully destroyed and freed\n");
 

@@ -64,8 +64,8 @@ bool create_texture_view(const uint32_t index, VulkanFrameData *frame_data);
  */
 bool destroy_texture_view(const uint32_t index, VulkanFrameData *frame_data);
 
-bool create_texture_sampler(VulkanFrameData *frame_data, uint32_t index);
-bool destroy_texture_sampler(VulkanFrameData *frame_data, uint32_t index);
+bool create_texture_sampler(const uint32_t index, VulkanFrameData *frame_data);
+bool destroy_texture_sampler(const uint32_t index, VulkanFrameData *frame_data);
 
 /**
  * Create the samaphores needed for GPU <-> CPU Synchronization

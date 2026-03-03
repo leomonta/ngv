@@ -75,6 +75,15 @@ bool destroy_swapchain(VulkanSetupInfo *setup_info);
 bool create_swapchain_image_views(VulkanSetupInfo *setup_info);
 
 /**
+ * Destroyies images views for the swapchain images
+ *
+ * @param[in] `setup_info` the vulkan context to use
+ *
+ * @return if the operation was successfull or not
+ */
+bool destroy_swapchain_image_views(VulkanSetupInfo *setup_info);
+
+/**
  * Creates the depth buffer and linked objects
  *
  * @param[in] `setup_info` the setup information necessary

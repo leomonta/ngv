@@ -37,39 +37,30 @@ bool create_setup_info(const NGVRendererSettings *settings, VulkanSetupInfo *set
 	if (!create_logical_device(setup_info, static_info)) {
 		return false;
 	}
-
 	if (!create_command_pool(setup_info)) {
 		return false;
 	}
-
 	if (!create_command_buffer(setup_info)) {
 		return true;
 	}
-
 	if (!create_swapchain(setup_info, static_info)) {
 		return false;
 	}
-
 	if (!create_swapchain_image_views(setup_info)) {
 		return false;
 	}
-
 	if (!create_depth_objects(setup_info, static_info->physical_dev)) {
 		return false;
 	}
-
 	if (!create_renderpass(settings, setup_info)) {
 		return false;
 	}
-
 	if (!create_framebuffers(setup_info)) {
 		return false;
 	}
-
 	if (!create_pipeline(settings, setup_info)) {
 		return false;
 	}
-
 	if (!create_descriptor_pool(setup_info)) {
 		return false;
 	}
@@ -82,31 +73,27 @@ bool destroy_setup_info(VulkanSetupInfo *setup_info) {
 	if (!destroy_descriptor_pool(setup_info)) {
 		return false;
 	}
-
 	if (!destroy_pipeline(setup_info)) {
 		return false;
 	}
-
-	if (!destroy_swapchain(setup_info)) {
-		return false;
-	}
-
-	if (!destroy_depth_objects(setup_info)) {
-		return false;
-	}
-
 	if (!destroy_framebuffers(setup_info)) {
 		return false;
 	}
-
 	if (!destroy_renderpass(setup_info)) {
 		return false;
 	}
-
+	if (!destroy_depth_objects(setup_info)) {
+		return false;
+	}
+	if (!destroy_swapchain_image_views(setup_info)) {
+		return false;
+	}
+	if (!destroy_swapchain(setup_info)) {
+		return false;
+	}
 	if (!destroy_command_pool(setup_info)) {
 		return false;
 	}
-
 	if (!destroy_logical_device(setup_info->logical_dev)) {
 		return false;
 	}
@@ -463,15 +450,23 @@ bool create_swapchain_image_views(VulkanSetupInfo *setup_info) {
 	return true;
 }
 
+bool destroy_swapchain_image_views(VulkanSetupInfo *setup_info) {
+	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
+		vkDestroyImageView(setup_info->logical_dev, setup_info->swapchain.views[i], nullptr);
+	}
+
+	llog(LOG_DEBUG, "[SWAPCHAIN] Image views successfully destroyed\n");
+
+	return true;
+}
+
 bool cleanup_swapchain(VulkanSetupInfo *setup_info) {
 
 	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
 		vkDestroyFramebuffer(setup_info->logical_dev, setup_info->swapchain.framebuffers[i], nullptr);
 	}
 
-	for (size_t i = 0; i < setup_info->swapchain.buffers_count; ++i) {
-		vkDestroyImageView(setup_info->logical_dev, setup_info->swapchain.views[i], nullptr);
-	}
+	destroy_swapchain_image_views(setup_info);
 
 	// destroy_depth_objects(setup_info);
 
