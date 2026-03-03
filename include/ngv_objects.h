@@ -185,6 +185,8 @@ typedef struct {
 	VkDeviceMemory   uniform_buff_mem[MAX_CONCURRENT_FRAMES];
 	void            *uniform_buff_mapped[MAX_CONCURRENT_FRAMES];
 	TextureData      textures;
+	uint32_t         image_acquisition_index;
+	uint32_t         current_image_index;
 } VulkanFrameData;
 
 typedef struct {

@@ -27,6 +27,9 @@ bool NGV_create_renderer(const NGVRendererSettings *settings, NGVRenderer *rende
 
 bool NGV_destroy_renderer(NGVRenderer *renderer) {
 
+	vkWaitForFences(renderer->frame_data.logical_dev, MAX_CONCURRENT_FRAMES, renderer->frame_data.in_flight_fence, VK_TRUE, 10000000000);
+	vkQueueWaitIdle(renderer->setup_info.device_queues.present);
+
 	if (!destroy_frame_data(&renderer->frame_data)) {
 		return false;
 	}

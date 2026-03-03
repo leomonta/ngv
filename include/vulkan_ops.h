@@ -12,7 +12,7 @@
  *
  * @return if the operation was successfull
  */
-bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index);
+bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data);
 
 /**
  * Sends command to the command buffer and to the other queues to issue a draw call

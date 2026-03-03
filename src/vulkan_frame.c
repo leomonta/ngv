@@ -62,13 +62,13 @@ bool create_frame_data(const NGVRendererSettings *settings, VulkanFrameData *fra
 }
 
 bool destroy_frame_data(VulkanFrameData *frame_data) {
-	if (!destroy_texture_image(frame_data)) {
+	if (!destroy_sync_objects(frame_data)) {
 		return false;
 	}
-	if (!destroy_texture_view(0, frame_data)) {
+	if (!destroy_uniform_buffer(frame_data)) {
 		return false;
 	}
-	if (!destroy_texture_sampler(frame_data, 0)) {
+	if (!destroy_index_buffer(frame_data)) {
 		return false;
 	}
 	if (!destroy_vertex_buffer(frame_data)) {
@@ -77,15 +77,16 @@ bool destroy_frame_data(VulkanFrameData *frame_data) {
 	if (!destroy_staging_buffer(frame_data)) {
 		return false;
 	}
-	if (!destroy_index_buffer(frame_data)) {
+	if (!destroy_texture_sampler(frame_data, 0)) {
 		return false;
 	}
-	if (!destroy_uniform_buffer(frame_data)) {
+	if (!destroy_texture_view(0, frame_data)) {
 		return false;
 	}
-	if (!destroy_sync_objects(frame_data)) {
+	if (!destroy_texture_image(frame_data)) {
 		return false;
 	}
+	llog(LOG_INFO, "NGV frame data successfully destroted\n");
 	return true;
 }
 
@@ -138,19 +139,19 @@ bool destroy_texture_image(VulkanFrameData *frame_data) {
 bool create_texture_view(const uint32_t index, VulkanFrameData *frame_data) {
 
 	VkImageViewCreateInfo vw_create = {
-		.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-		.image                           = frame_data->textures.objects[index],
-		.viewType                        = VK_IMAGE_VIEW_TYPE_2D,
-		.format                          = VK_FORMAT_R8G8B8A8_SRGB,
-		.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
-		.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY,
-		.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY,
-		.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY,
-		.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-		.subresourceRange.baseMipLevel   = 0,
-		.subresourceRange.levelCount     = 1,
-		.subresourceRange.baseArrayLayer = 0,
-		.subresourceRange.layerCount     = 1,
+	    .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+	    .image                           = frame_data->textures.objects[index],
+	    .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
+	    .format                          = VK_FORMAT_R8G8B8A8_SRGB,
+	    .components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+	    .subresourceRange.baseMipLevel   = 0,
+	    .subresourceRange.levelCount     = 1,
+	    .subresourceRange.baseArrayLayer = 0,
+	    .subresourceRange.layerCount     = 1,
 	};
 
 	auto res = vkCreateImageView(frame_data->logical_dev, &vw_create, nullptr, &frame_data->textures.views[index]);
@@ -270,11 +271,12 @@ bool create_descriptor_set(VulkanFrameData *frame_data, VulkanSetupInfo *setup_i
 
 bool create_sync_objects(VulkanFrameData *frame_data, VulkanSetupInfo *setup_info) {
 
-	VkCommandBufferAllocateInfo g_cmd_crate = {};
-	g_cmd_crate.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	g_cmd_crate.commandPool                 = setup_info->graphics_cmd_pool;
-	g_cmd_crate.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	g_cmd_crate.commandBufferCount          = MAX_CONCURRENT_FRAMES;
+	VkCommandBufferAllocateInfo g_cmd_crate = {
+	    .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+	    .commandPool        = setup_info->graphics_cmd_pool,
+	    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+	    .commandBufferCount = MAX_CONCURRENT_FRAMES,
+	};
 
 	auto res = vkAllocateCommandBuffers(frame_data->logical_dev, &g_cmd_crate, frame_data->cmd_buff);
 	if (res != VK_SUCCESS) {
@@ -284,12 +286,14 @@ bool create_sync_objects(VulkanFrameData *frame_data, VulkanSetupInfo *setup_inf
 
 	llog(LOG_DEBUG, "[COMMAND BUFFER] Graphics command buffer successfully created\n");
 
-	VkSemaphoreCreateInfo sem_create = {};
-	sem_create.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreCreateInfo sem_create = {
+	    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+	};
 
-	VkFenceCreateInfo fnc_create = {};
-	fnc_create.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fnc_create.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
+	VkFenceCreateInfo fnc_create = {
+	    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+	    .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+	};
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
 
@@ -318,6 +322,7 @@ bool create_sync_objects(VulkanFrameData *frame_data, VulkanSetupInfo *setup_inf
 }
 
 bool destroy_sync_objects(VulkanFrameData *frame_data) {
+
 
 	for (size_t i = 0; i < MAX_CONCURRENT_FRAMES; ++i) {
 		vkDestroyFence(frame_data->logical_dev, frame_data->in_flight_fence[i], nullptr);

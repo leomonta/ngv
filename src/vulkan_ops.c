@@ -5,40 +5,38 @@
 #include "vulkan_memory.h"
 #include "vulkan_setup.h"
 
-static uint32_t acq_index           = 0;
-static bool     first_img_acquired  = false;
-static uint32_t current_image_index = UINT32_MAX;
+static bool first_img_acquired = false;
 
-bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data, uint32_t img_index) {
+bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup_info, VulkanFrameData *frame_data) {
 	VkCommandBufferBeginInfo beg_info = {};
 	beg_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beg_info.flags                    = 0;       // Optional
 	beg_info.pInheritanceInfo         = nullptr; // Optional
 
-	auto res = vkBeginCommandBuffer(frame_data->cmd_buff[current_image_index], &beg_info);
+	auto res = vkBeginCommandBuffer(frame_data->cmd_buff[frame_data->current_image_index], &beg_info);
 	{
 		if (res != VK_SUCCESS) {
 			llog(LOG_FATAL, "[COMMAND BUFFER] Could not begin recording the command buffer: %s\n", VkResult_str(res));
 		}
 
 		VkClearValue clear_colors[2] = {};
-		clear_colors[0].color = (VkClearColorValue){
-		    .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
-		};
+		clear_colors[0].color        = (VkClearColorValue){
+		           .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
+                };
 		clear_colors[1].depthStencil = (VkClearDepthStencilValue){1.0f, 0};
 
 		VkRenderPassBeginInfo renderpass_info = {};
 		renderpass_info.sType                 = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderpass_info.renderPass            = setup_info->renderpass;
-		renderpass_info.framebuffer           = setup_info->swapchain.framebuffers[img_index];
+		renderpass_info.framebuffer           = setup_info->swapchain.framebuffers[frame_data->current_image_index];
 		renderpass_info.renderArea.offset     = (VkOffset2D){0, 0};
 		renderpass_info.renderArea.extent     = setup_info->swapchain.extent;
 		renderpass_info.clearValueCount       = settings->accumulation_buffer ? 0 : 2;
 		renderpass_info.pClearValues          = clear_colors;
 
-		vkCmdBeginRenderPass(frame_data->cmd_buff[current_image_index], &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(frame_data->cmd_buff[frame_data->current_image_index], &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
-			vkCmdBindPipeline(frame_data->cmd_buff[current_image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, setup_info->pipeline.object);
+			vkCmdBindPipeline(frame_data->cmd_buff[frame_data->current_image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, setup_info->pipeline.object);
 			VkViewport viewport = {};
 			viewport.x          = 0.0f;
 			viewport.y          = 0.0f;
@@ -46,26 +44,26 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 			viewport.height     = (float)(setup_info->swapchain.extent.height);
 			viewport.minDepth   = 0.0f;
 			viewport.maxDepth   = 1.0f;
-			vkCmdSetViewport(frame_data->cmd_buff[current_image_index], 0, 1, &viewport);
+			vkCmdSetViewport(frame_data->cmd_buff[frame_data->current_image_index], 0, 1, &viewport);
 
 			VkRect2D scissor = {};
 			scissor.offset   = (VkOffset2D){0, 0};
 			scissor.extent   = setup_info->swapchain.extent;
-			vkCmdSetScissor(frame_data->cmd_buff[current_image_index], 0, 1, &scissor);
+			vkCmdSetScissor(frame_data->cmd_buff[frame_data->current_image_index], 0, 1, &scissor);
 
 			VkBuffer     v_bufs[1]  = {frame_data->vertex_buff};
 			VkDeviceSize offsets[1] = {0};
-			vkCmdBindVertexBuffers(frame_data->cmd_buff[current_image_index], 0, 1, v_bufs, offsets);
+			vkCmdBindVertexBuffers(frame_data->cmd_buff[frame_data->current_image_index], 0, 1, v_bufs, offsets);
 
-			vkCmdBindIndexBuffer(frame_data->cmd_buff[current_image_index], frame_data->index_buff, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindIndexBuffer(frame_data->cmd_buff[frame_data->current_image_index], frame_data->index_buff, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdBindDescriptorSets(frame_data->cmd_buff[current_image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, setup_info->pipeline.layout, 0, 1, &frame_data->descriptor_sets[current_image_index], 0, nullptr);
+			vkCmdBindDescriptorSets(frame_data->cmd_buff[frame_data->current_image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, setup_info->pipeline.layout, 0, 1, &frame_data->descriptor_sets[frame_data->current_image_index], 0, nullptr);
 
-			vkCmdDrawIndexed(frame_data->cmd_buff[current_image_index], frame_data->index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(frame_data->cmd_buff[frame_data->current_image_index], frame_data->index_count, 1, 0, 0, 0);
 		}
-		vkCmdEndRenderPass(frame_data->cmd_buff[current_image_index]);
+		vkCmdEndRenderPass(frame_data->cmd_buff[frame_data->current_image_index]);
 	}
-	res = vkEndCommandBuffer(frame_data->cmd_buff[current_image_index]);
+	res = vkEndCommandBuffer(frame_data->cmd_buff[frame_data->current_image_index]);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAW CALL] Could not end the command buffer recording: %s\n", VkResult_str(res));
 	}
@@ -73,9 +71,9 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 }
 
 VkSemaphore get_image_available_semaphore(const NGVRendererSettings *settings, NGVRenderer *renderer) {
-	auto temp = acq_index;
+	auto temp = renderer->frame_data.image_acquisition_index;
 	if (!settings->accumulation_buffer) {
-		acq_index = (acq_index + 1) % MAX_CONCURRENT_FRAMES;
+		renderer->frame_data.image_acquisition_index = (renderer->frame_data.image_acquisition_index + 1) % MAX_CONCURRENT_FRAMES;
 	}
 	return renderer->frame_data.image_available[temp];
 }
@@ -83,7 +81,7 @@ VkSemaphore get_image_available_semaphore(const NGVRendererSettings *settings, N
 uint32_t get_next_image(NGVRenderer *renderer) {
 
 	uint32_t img_index = 0;
-	auto     res       = vkAcquireNextImageKHR(renderer->frame_data.logical_dev, renderer->setup_info.swapchain.swapchain, UINT64_MAX, renderer->frame_data.image_available[acq_index], VK_NULL_HANDLE, &img_index);
+	auto     res       = vkAcquireNextImageKHR(renderer->frame_data.logical_dev, renderer->setup_info.swapchain.swapchain, UINT64_MAX, renderer->frame_data.image_available[renderer->frame_data.image_acquisition_index], VK_NULL_HANDLE, &img_index);
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR) {
 		llog(LOG_INFO, "[DRAWING] The swapchain is out of date, recreating it\n");
@@ -97,27 +95,27 @@ uint32_t get_next_image(NGVRenderer *renderer) {
 }
 
 void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
-	if (current_image_index != UINT32_MAX) {
-		vkWaitForFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[current_image_index], VK_TRUE, UINT64_MAX);
+	if (renderer->frame_data.current_image_index != UINT32_MAX) {
+		vkWaitForFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[renderer->frame_data.current_image_index], VK_TRUE, UINT64_MAX);
 	}
 
 	VkSemaphore img_available = VK_NULL_HANDLE;
 
 	if (!first_img_acquired || !settings->accumulation_buffer) {
-		first_img_acquired  = true;
-		current_image_index = get_next_image(renderer);
-		img_available       = get_image_available_semaphore(settings, renderer);
+		first_img_acquired                       = true;
+		renderer->frame_data.current_image_index = get_next_image(renderer);
+		img_available                            = get_image_available_semaphore(settings, renderer);
 	}
 
-	update_uniform_buffer(&renderer->setup_info, &renderer->frame_data.uniform_buff_mapped[current_image_index]);
+	update_uniform_buffer(&renderer->setup_info, &renderer->frame_data.uniform_buff_mapped[renderer->frame_data.current_image_index]);
 
-	vkResetFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[current_image_index]);
+	vkResetFences(renderer->frame_data.logical_dev, 1, &renderer->frame_data.in_flight_fence[renderer->frame_data.current_image_index]);
 
-	vkResetCommandBuffer(renderer->frame_data.cmd_buff[current_image_index], 0);
+	vkResetCommandBuffer(renderer->frame_data.cmd_buff[renderer->frame_data.current_image_index], 0);
 
-	record_cmd_buff(settings, &renderer->setup_info, &renderer->frame_data, current_image_index);
+	record_cmd_buff(settings, &renderer->setup_info, &renderer->frame_data);
 
-	VkSemaphore          signal_sems[] = {renderer->frame_data.render_finished[current_image_index]};
+	VkSemaphore          signal_sems[] = {renderer->frame_data.render_finished[renderer->frame_data.current_image_index]};
 	VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
 	VkSubmitInfo submit_info = {
@@ -128,11 +126,11 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 	    .pSignalSemaphores    = signal_sems,
 	    .pWaitDstStageMask    = wait_stages,
 	    .commandBufferCount   = 1,
-	    .pCommandBuffers      = &renderer->frame_data.cmd_buff[current_image_index],
+	    .pCommandBuffers      = &renderer->frame_data.cmd_buff[renderer->frame_data.current_image_index],
 	};
 
 	// in_flight_fence is signaled when the command submission is done
-	auto res = vkQueueSubmit(renderer->setup_info.device_queues.graphics, 1, &submit_info, renderer->frame_data.in_flight_fence[current_image_index]);
+	auto res = vkQueueSubmit(renderer->setup_info.device_queues.graphics, 1, &submit_info, renderer->frame_data.in_flight_fence[renderer->frame_data.current_image_index]);
 	if (res != VK_SUCCESS) {
 		llog(LOG_FATAL, "[DRAWING] Could not submit command to queue: %s\n", VkResult_str(res));
 	}
@@ -145,7 +143,7 @@ void draw_frame(const NGVRendererSettings *settings, NGVRenderer *renderer) {
 	    .pWaitSemaphores    = signal_sems, // wait on the previously signaled semaphore
 	    .swapchainCount     = 1,
 	    .pSwapchains        = swapchains,
-	    .pImageIndices      = &current_image_index,
+	    .pImageIndices      = &renderer->frame_data.current_image_index,
 	    .pResults           = nullptr, // Optional
 	};
 
