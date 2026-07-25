@@ -21,8 +21,8 @@ bool record_cmd_buff(const NGVRendererSettings *settings, VulkanSetupInfo *setup
 
 		VkClearValue clear_colors[2] = {};
 		clear_colors[0].color        = (VkClearColorValue){
-		           .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
-                };
+		    .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
+		};
 		clear_colors[1].depthStencil = (VkClearDepthStencilValue){1.0f, 0};
 
 		VkRenderPassBeginInfo renderpass_info = {};
@@ -234,18 +234,19 @@ void transition_image_layout(VulkanSetupInfo *setup_info, VkImage image, VkForma
 	VkCommandBuffer cmd_buff;
 	begin_temporary_command_buffer(setup_info, GRAPHIC_QUEUE, &cmd_buff);
 
-	VkImageMemoryBarrier barrier            = {};
-	barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout                       = from_layout;
-	barrier.newLayout                       = to_layout;
-	barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image                           = image;
-	barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel   = 0;
-	barrier.subresourceRange.levelCount     = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount     = 1;
-	barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+	VkImageMemoryBarrier barrier = {
+	    .sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+	    .oldLayout                       = from_layout,
+	    .newLayout                       = to_layout,
+	    .srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
+	    .image                           = image,
+	    .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+	    .subresourceRange.baseMipLevel   = 0,
+	    .subresourceRange.levelCount     = 1,
+	    .subresourceRange.baseArrayLayer = 0,
+	    .subresourceRange.layerCount     = 1,
+	    .dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
+	};
 
 	VkPipelineStageFlags src_stage = {};
 	VkPipelineStageFlags dst_stage = {};
